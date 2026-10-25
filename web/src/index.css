@@ -284,3 +284,14 @@ nav .item.logout { color: var(--muted); font-size: 14px; }
 }
 .banner button { border: 0; background: none; font-size: 18px; line-height: 1; color: var(--muted); padding: 0 4px; }
 .btn:disabled { opacity: .6; cursor: default; }
+
+/* Gestionar listas: progreso y filtro */
+.progress { height: 6px; max-width: 720px; margin: -8px 0 20px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
+.progress-fill { height: 100%; background: var(--accent); border-radius: inherit; transition: width .3s; }
+.segmented { display: inline-flex; gap: 2px; padding: 3px; margin-bottom: 16px; background: var(--surface-2); border-radius: 10px; }
+.segmented button { border: 0; background: none; padding: 6px 14px; border-radius: 8px; color: var(--muted); }
+.segmented button:hover { color: var(--text); }
+.segmented button.active { background: var(--surface); color: var(--text); font-weight: 600; box-shadow: 0 1px 3px #0000001f; }
+.segmented .count { margin-left: 6px; font-size: 12px; font-weight: 500; opacity: .7; }
+.status.done { color: var(--text); }
+button.link { border: 0; background: none; padding: 0; color: var(--accent); text-decoration: underline; }

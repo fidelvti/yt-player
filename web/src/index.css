@@ -126,11 +126,18 @@ main { padding: 28px 32px 48px; min-width: 0; }
   transition: transform .25s;
 }
 .card:hover img { transform: scale(1.04); }
+.card .badges { position: absolute; left: 8px; top: 8px; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
 .card .badge {
-  position: absolute; left: 8px; top: 8px;
   font-size: 11px; font-weight: 600;
   padding: 3px 9px; border-radius: 999px;
 }
+.summarized-btn {
+  position: absolute; left: 8px; top: 8px;
+  font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px;
+  border: 0; background: #6e56cf; color: #fff; transition: filter .15s;
+}
+.summarized-btn.below-badge { top: 34px; }
+.summarized-btn:hover { filter: brightness(1.15); text-decoration: underline; }
 .card .playing-badge { background: var(--accent); color: #fff; }
 .card .watched-badge { background: #000000b8; color: #fff; backdrop-filter: blur(4px); }
 /* Visto: miniatura apagada y en gris, título atenuado; se recupera al pasar el ratón */
@@ -191,3 +198,69 @@ main { padding: 28px 32px 48px; min-width: 0; }
   .nav-label, .spacer { display: none; }
   main { padding: 20px 16px 40px; }
 }
+
+/* Selección para resumir */
+.card-wrap { position: relative; }
+.select-btn {
+  position: absolute; top: 8px; right: 8px;
+  width: 26px; height: 26px; padding: 0;
+  display: grid; place-items: center;
+  border-radius: 50%; border: 2px solid #fff;
+  background: #00000066; color: #fff; font-size: 14px; font-weight: 700;
+  opacity: 0; transition: opacity .15s, background .15s;
+  backdrop-filter: blur(4px);
+}
+.card-wrap:hover .select-btn, .select-btn[aria-pressed="true"], .select-btn:focus-visible { opacity: 1; }
+.select-btn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); }
+.card-wrap.is-selected .thumb { box-shadow: 0 0 0 3px var(--accent); }
+
+.selection-bar {
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 10;
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px 10px 20px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 999px; box-shadow: 0 8px 30px #00000033;
+}
+.selection-bar span { font-weight: 600; }
+
+/* Panel de resumen */
+.overlay {
+  position: fixed; inset: 0; z-index: 20;
+  background: #000000a0; display: grid; place-items: center; padding: 24px;
+}
+.panel {
+  width: 100%; max-width: 760px; max-height: 88vh; overflow-y: auto;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 16px; padding: 24px 28px; box-shadow: 0 20px 60px #0000004d;
+}
+.panel-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.panel-header h2 { font-size: 20px; letter-spacing: -.01em; }
+.summary-body { line-height: 1.6; }
+.summary-body h3 { font-size: 16px; margin: 20px 0 6px; }
+.summary-body p { margin: 8px 0; }
+.summary-body ul { margin: 6px 0; padding-left: 22px; }
+.summary-body li { margin: 4px 0; }
+.sources, .skipped { margin-top: 20px; font-size: 14px; }
+.sources summary { cursor: pointer; color: var(--muted); }
+.sources ol, .skipped ul { margin: 8px 0 0; padding-left: 22px; }
+.sources a { color: inherit; }
+.skipped { color: var(--muted); }
+.meta { font-size: 13px; color: var(--muted); }
+.panel-footer { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--border); font-size: 13px; color: var(--muted); }
+.spinner {
+  display: inline-block; width: 14px; height: 14px; margin-right: 8px; vertical-align: -2px;
+  border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Historial de resúmenes */
+.history { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; max-width: 760px; }
+.history button {
+  width: 100%; text-align: left; display: grid; gap: 4px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px;
+  transition: border-color .15s;
+}
+.history button:hover { border-color: var(--accent); }
+.history .when { font-size: 13px; color: var(--muted); }
+.history .titles { font-weight: 600; }

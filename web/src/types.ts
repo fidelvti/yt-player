@@ -18,3 +18,12 @@ export interface FeedVideo {
   published: string;
   thumbnail: string;
 }
+
+export interface SummaryResult {
+  id: number;
+  createdAt: number;
+  text: string;
+  included: { videoId: string; title: string; channelTitle: string }[];
+  skipped: { video: { videoId: string; title: string }; reason: string }[];
+  usage: { inputTokens: number; outputTokens: number; costUsd: number };
+}

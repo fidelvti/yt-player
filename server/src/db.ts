@@ -31,6 +31,33 @@ db.exec(`
     watched_at INTEGER NOT NULL
   );
   CREATE INDEX IF NOT EXISTS watched_at_idx ON watched(watched_at);
+
+  -- Sustituida por summaries (que guarda el texto, no solo la marca).
+  DROP TABLE IF EXISTS summarized;
+
+  -- Resúmenes generados, con su texto, vídeos incluidos y coste; se purgan a los 30 días.
+  CREATE TABLE IF NOT EXISTS summaries (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at  INTEGER NOT NULL,
+    result_json TEXT NOT NULL
+  );
+
+  -- Caché de transcripciones (se descargan una sola vez por vídeo).
+  CREATE TABLE IF NOT EXISTS transcripts (
+    video_id   TEXT PRIMARY KEY,
+    text       TEXT NOT NULL,
+    lang       TEXT NOT NULL,
+    fetched_at INTEGER NOT NULL
+  );
+
+  -- Un registro por resumen generado, para saber cuánto se gasta.
+  CREATE TABLE IF NOT EXISTS usage (
+    at            INTEGER NOT NULL,
+    videos        INTEGER NOT NULL,
+    input_tokens  INTEGER NOT NULL,
+    output_tokens INTEGER NOT NULL,
+    cost_usd      REAL NOT NULL
+  );
 `);
 
 /** Ejecuta fn dentro de una transacción; revierte si lanza. */

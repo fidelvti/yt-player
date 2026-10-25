@@ -2,6 +2,8 @@ import express from "express";
 import { authUrl, authedClient, createClient, handleCallback } from "./auth.js";
 import { fetchFeed } from "./feed.js";
 import { loadLists, parseLists, saveLists } from "./lists.js";
+import { listSummaries, monthUsage, parseVideoRefs, SummaryError, summarizedMap, summarize } from "./summarize.js";
+import { YtDlpMissingError } from "./transcripts.js";
 import { isVideoId, listWatched, markWatched } from "./watched.js";
 import { listSubscriptions } from "./youtube.js";
 
@@ -80,6 +82,38 @@ app.post("/api/watched/:videoId", (req, res) => {
   }
   markWatched(req.params.videoId);
   res.status(204).end();
+});
+
+app.post("/api/summarize", express.json(), async (req, res) => {
+  const videos = parseVideoRefs(req.body?.videos);
+  if (!videos) {
+    res.status(400).json({ error: "Selección no válida (de 1 a 20 vídeos)" });
+    return;
+  }
+  try {
+    res.json(await summarize(videos));
+  } catch (err) {
+    if (err instanceof SummaryError) {
+      res.status(err.status).json({ error: err.message });
+    } else if (err instanceof YtDlpMissingError) {
+      res.status(503).json({ error: err.message });
+    } else {
+      console.error(err);
+      res.status(500).json({ error: "Error inesperado al resumir" });
+    }
+  }
+});
+
+app.get("/api/summarized", (_req, res) => {
+  res.json(summarizedMap());
+});
+
+app.get("/api/summaries", (_req, res) => {
+  res.json(listSummaries());
+});
+
+app.get("/api/usage", (_req, res) => {
+  res.json(monthUsage());
 });
 
 app.listen(port, () => console.log(`Servidor en http://localhost:${port}`));

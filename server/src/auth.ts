@@ -1,5 +1,5 @@
 import { OAuth2Client, type Credentials } from "google-auth-library";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -39,6 +39,17 @@ async function loadTokens(): Promise<Credentials | null> {
   } catch {
     return null;
   }
+}
+
+/** Cierra la sesión: borra los tokens guardados (no revoca el permiso en Google). */
+export async function clearTokens(): Promise<void> {
+  await rm(TOKENS_PATH, { force: true });
+}
+
+/** El acceso a Google ya no es válido (refresh token caducado o revocado). */
+export function isAuthExpired(err: unknown): boolean {
+  const e = err as { response?: { status?: number; data?: { error?: string } }; message?: string };
+  return e.response?.data?.error === "invalid_grant" || e.response?.status === 401 || e.message === "invalid_grant";
 }
 
 export async function handleCallback(client: OAuth2Client, code: string): Promise<void> {

@@ -3,7 +3,8 @@ import { DatabaseSync } from "node:sqlite";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const DATA_DIR = join(dirname(fileURLToPath(import.meta.url)), "../../data");
+// YT_PLAYER_DATA permite usar otra carpeta de datos (p. ej. para pruebas sin tocar las listas reales).
+export const DATA_DIR = process.env.YT_PLAYER_DATA ?? join(dirname(fileURLToPath(import.meta.url)), "../../data");
 mkdirSync(DATA_DIR, { recursive: true });
 
 export const db = new DatabaseSync(join(DATA_DIR, "yt-player.db"));

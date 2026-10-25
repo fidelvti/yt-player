@@ -29,9 +29,9 @@ function isShort(entry: RssEntry): boolean {
   return entry.link?.["@_href"]?.includes("/shorts/") ?? false;
 }
 
-async function fetchChannelFeed(channelId: string): Promise<FeedVideo[]> {
+async function fetchChannelFeed(channelId: string, force: boolean): Promise<FeedVideo[]> {
   const hit = cache.get(channelId);
-  if (hit && Date.now() - hit.at < CACHE_MS) return hit.videos;
+  if (!force && hit && Date.now() - hit.at < CACHE_MS) return hit.videos;
 
   const res = await fetch(`https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`);
   if (!res.ok) throw new Error(`RSS ${channelId}: HTTP ${res.status}`);
@@ -53,8 +53,8 @@ async function fetchChannelFeed(channelId: string): Promise<FeedVideo[]> {
 }
 
 /** Vídeos recientes de varios canales, del más nuevo al más antiguo. Un canal que falla no tumba el resto. */
-export async function fetchFeed(channelIds: string[]): Promise<FeedVideo[]> {
-  const results = await Promise.allSettled(channelIds.map(fetchChannelFeed));
+export async function fetchFeed(channelIds: string[], force = false): Promise<FeedVideo[]> {
+  const results = await Promise.allSettled(channelIds.map((id) => fetchChannelFeed(id, force)));
   const videos: FeedVideo[] = [];
   for (const r of results) {
     if (r.status === "fulfilled") videos.push(...r.value);

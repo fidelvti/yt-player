@@ -10,6 +10,16 @@ export interface ChannelList {
   channelIds: string[];
 }
 
+export interface SubscriptionsResponse {
+  subscriptions: Subscription[];
+  /** Canales quitados de las listas por haberte dado de baja. */
+  pruned: number;
+  pruneSkipped?: { wouldRemove: number; total: number };
+}
+
+/** Lo mínimo de un vídeo para resumirlo. */
+export type VideoRef = Pick<FeedVideo, "videoId" | "title" | "channelTitle">;
+
 export interface FeedVideo {
   videoId: string;
   title: string;

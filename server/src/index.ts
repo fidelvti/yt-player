@@ -1,10 +1,10 @@
 import express from "express";
-import { authUrl, authedClient, createClient, handleCallback } from "./auth.js";
+import { authUrl, authedClient, clearTokens, createClient, handleCallback, isAuthExpired } from "./auth.js";
 import { fetchFeed } from "./feed.js";
-import { loadLists, parseLists, saveLists } from "./lists.js";
+import { loadLists, parseLists, pruneChannels, saveLists } from "./lists.js";
 import { listSummaries, monthUsage, parseVideoRefs, SummaryError, summarizedMap, summarize } from "./summarize.js";
 import { YtDlpMissingError } from "./transcripts.js";
-import { isVideoId, listWatched, markWatched } from "./watched.js";
+import { isVideoId, listWatched, markWatched, unmarkWatched } from "./watched.js";
 import { listSubscriptions } from "./youtube.js";
 
 const app = express();
@@ -30,6 +30,11 @@ app.get("/auth/callback", async (req, res) => {
   }
 });
 
+app.post("/auth/logout", async (_req, res) => {
+  await clearTokens();
+  res.status(204).end();
+});
+
 app.get("/api/me", async (_req, res) => {
   res.json({ loggedIn: (await authedClient()) !== null });
 });
@@ -41,8 +46,16 @@ app.get("/api/subscriptions", async (_req, res) => {
     return;
   }
   try {
-    res.json(await listSubscriptions(client));
+    const subscriptions = await listSubscriptions(client);
+    // Las bajas de YouTube se reflejan en las listas: un canal que ya no sigues deja de aparecer en ellas.
+    const { removed, skipped } = pruneChannels(new Set(subscriptions.map((s) => s.channelId)));
+    res.json({ subscriptions, pruned: removed.length, pruneSkipped: skipped });
   } catch (err) {
+    if (isAuthExpired(err)) {
+      await clearTokens(); // el token ya no sirve: se descarta para que la app pida iniciar sesión
+      res.status(401).json({ error: "session_expired" });
+      return;
+    }
     console.error(err);
     res.status(502).json({ error: "Error al consultar YouTube" });
   }
@@ -68,7 +81,7 @@ app.get("/api/lists/:id/feed", async (req, res) => {
     res.status(404).json({ error: "Lista no encontrada" });
     return;
   }
-  res.json(await fetchFeed(list.channelIds));
+  res.json(await fetchFeed(list.channelIds, req.query.refresh === "1"));
 });
 
 app.get("/api/watched", (_req, res) => {
@@ -81,6 +94,15 @@ app.post("/api/watched/:videoId", (req, res) => {
     return;
   }
   markWatched(req.params.videoId);
+  res.status(204).end();
+});
+
+app.delete("/api/watched/:videoId", (req, res) => {
+  if (!isVideoId(req.params.videoId)) {
+    res.status(400).json({ error: "videoId no válido" });
+    return;
+  }
+  unmarkWatched(req.params.videoId);
   res.status(204).end();
 });
 

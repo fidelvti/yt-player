@@ -6,10 +6,10 @@ Reproductor de YouTube personal, sencillo y a medida. Sin buscador, sin likes ni
 
 - **Login con tu cuenta de Google** y lectura de tus suscripciones (solo lectura).
 - **Listas de canales propias**: agrupa tus suscripciones (p. ej. 70 canales en 7 listas). Un canal solo puede estar en una lista.
-- **Feed por lista** con los vídeos recientes de sus canales, sin shorts.
+- **Feed por lista** con los vídeos recientes de sus canales, sin shorts y con botón para actualizarlo.
 - **Reproductor** integrado con velocidad ajustable (1x a 2x, la última se recuerda). Con Premium en el navegador no muestra anuncios.
-- **Vídeos vistos**: se marcan al empezar a reproducirse, se atenúan en el feed y caducan a los 7 días.
-- **Resumen** de los vídeos que selecciones: un único texto con los puntos principales, sin repetir lo que coincide entre vídeos. Se guarda 30 días en la sección *Resúmenes* y se reabre desde la etiqueta **✦ Resumido** de cada vídeo.
+- **Vídeos vistos**: se marcan al empezar a reproducirse, se atenúan en el feed y caducan a los 7 días. Pulsando la etiqueta *✓ Visto* se quita la marca.
+- **Resumen** de los vídeos que selecciones: un único texto con los puntos principales, sin repetir lo que coincide entre vídeos. Se guarda 30 días en la sección *Resúmenes* y se reabre desde la etiqueta **✦ Resumido** de cada vídeo. Desde un resumen guardado se puede volver a generar (nueva llamada a la API).
 
 ## Requisitos
 
@@ -46,7 +46,8 @@ Crea una clave en [console.anthropic.com](https://console.anthropic.com), carga 
 | Acción | Comando |
 |---|---|
 | Arrancar backend y frontend | `npm run dev` (desde la raíz) |
-| Parar | `Ctrl+C` en esa terminal |
+| Arrancar con un doble clic | `yt-player.command` (arranca y abre el navegador) |
+| Parar | `Ctrl+C` en esa terminal, o cerrar la ventana si lo abriste con el doble clic |
 | Comprobar tipos | `npm run typecheck` |
 
 `npm run dev` levanta dos procesos: el backend en http://localhost:3000 y el frontend (Vite) en http://localhost:5173. Los dos se recargan solos al editar el código; tras cambiar `.env` hay que reiniciar.
@@ -72,6 +73,7 @@ server/src/
   db.ts          esquema SQLite
 web/src/         interfaz (Vite + React + TypeScript)
 data/            datos locales, ignorados por git (ver abajo)
+docs/            sitio público (GitHub Pages): página principal y política de privacidad
 ```
 
 ## Datos locales (`data/`)
@@ -82,6 +84,16 @@ Nada de esto se sube a git:
 - `tokens.json`: tokens de acceso a tu cuenta de Google. Trátalo como una contraseña.
 
 Para empezar de cero basta con borrar `data/` (volverás a iniciar sesión).
+
+## Sesión de Google
+
+- **Cerrar sesión** (abajo en la barra lateral) borra `data/tokens.json`. No revoca el permiso en Google; para eso usa https://myaccount.google.com/permissions.
+- Si el acceso caduca, la app lo detecta, descarta el token y muestra *"Tu sesión de Google ha caducado"* con el botón para entrar de nuevo.
+- Mientras la app de Google siga en modo *Prueba*, el acceso caduca a los 7 días.
+
+## Sitio público (`docs/`)
+
+`docs/` se publica con GitHub Pages en https://fidelvti.github.io/yt-player/ y contiene la página principal y la [política de privacidad](https://fidelvti.github.io/yt-player/privacy.html) que exige Google para publicar la app OAuth. Incluye el archivo de verificación de Search Console; no lo borres.
 
 ## Cosas a tener en cuenta
 
@@ -95,7 +107,7 @@ Para empezar de cero basta con borrar `data/` (volverás a iniciar sesión).
 | Síntoma | Causa y solución |
 |---|---|
 | `redirect_uri_mismatch` al iniciar sesión | El URI del cliente OAuth no es exactamente `http://localhost:3000/auth/callback` |
-| Hay que volver a iniciar sesión cada semana | La app de Google está en modo *Prueba*, que caduca el acceso a los 7 días. Pásala a *En producción* en la pantalla de consentimiento |
+| Hay que volver a iniciar sesión cada semana | La app de Google está en modo *Prueba*, que caduca el acceso a los 7 días. Pásala a *En producción*, lo que exige tener verificados los datos de la ficha (Branding), ver *Sitio público* |
 | Aviso de "app no verificada" | Es esperado en una app personal; se puede continuar |
 | "yt-dlp no está instalado" | `brew install yt-dlp`, o apunta `YT_DLP_PATH` en `.env` al ejecutable |
 | yt-dlp falla con "The page needs to be reloaded" | Prueba otro cliente con `YT_DLP_PLAYER_CLIENT` en `.env` (por defecto `android_vr`) |

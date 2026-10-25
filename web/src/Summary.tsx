@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
-import type { FeedVideo, SummaryResult } from "./types";
+import type { SummaryResult, VideoRef } from "./types";
 
 interface Usage {
   summaries: number;
@@ -47,16 +47,18 @@ function renderMarkdown(text: string): ReactNode[] {
 
 interface SummaryProps {
   /** Vídeos a resumir (resumen nuevo). */
-  videos?: FeedVideo[];
+  videos?: VideoRef[];
   /** Resumen ya guardado: se muestra tal cual, sin llamar a la API. */
   stored?: SummaryResult;
   onSummarized: (result: SummaryResult) => void;
+  /** Solo en resúmenes guardados: volver a generarlo con los mismos vídeos (se cobra de nuevo). */
+  onRegenerate?: (videos: VideoRef[]) => void;
   onClose: () => void;
 }
 
 const dateFmt = new Intl.DateTimeFormat("es", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
-export function Summary({ videos = [], stored, onSummarized, onClose }: SummaryProps) {
+export function Summary({ videos = [], stored, onSummarized, onRegenerate, onClose }: SummaryProps) {
   const [result, setResult] = useState<SummaryResult | null>(stored ?? null);
   const [error, setError] = useState<string | null>(null);
   const [usage, setUsage] = useState<Usage | null>(null);
@@ -147,6 +149,15 @@ export function Summary({ videos = [], stored, onSummarized, onClose }: SummaryP
                     </li>
                   ))}
                 </ul>
+              </div>
+            )}
+
+            {stored && onRegenerate && (
+              <div className="regenerate">
+                <button className="btn" onClick={() => onRegenerate(result.included)}>
+                  Volver a generar
+                </button>
+                <span className="meta">Hace una llamada nueva a la API (≈ {usd(result.usage.costUsd)}).</span>
               </div>
             )}
 

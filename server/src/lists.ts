@@ -66,6 +66,37 @@ export async function saveLists(lists: ChannelList[]): Promise<void> {
   writeLists(lists);
 }
 
+export interface PruneResult {
+  removed: string[];
+  /** Si se han omitido las bajas por ser demasiadas de golpe (posible fallo), cuántas eran y de cuántos canales. */
+  skipped?: { wouldRemove: number; total: number };
+}
+
+/**
+ * Quita de las listas los canales que ya no están en las suscripciones.
+ * Salvaguarda: si no hay suscripciones, o habría que quitar más de la mitad de los canales de las listas,
+ * no toca nada (lo más probable es que la respuesta de YouTube sea incompleta).
+ */
+export function pruneChannels(subscribed: Set<string>): PruneResult {
+  if (subscribed.size === 0) return { removed: [] };
+
+  const inLists = (db.prepare("SELECT channel_id FROM list_channels").all() as { channel_id: string }[]).map(
+    (r) => r.channel_id,
+  );
+  const gone = inLists.filter((id) => !subscribed.has(id));
+  if (gone.length === 0) return { removed: [] };
+
+  if (gone.length > inLists.length / 2) {
+    return { removed: [], skipped: { wouldRemove: gone.length, total: inLists.length } };
+  }
+
+  transaction(() => {
+    const del = db.prepare("DELETE FROM list_channels WHERE channel_id = ?");
+    for (const id of gone) del.run(id);
+  });
+  return { removed: gone };
+}
+
 /** Importa data/lists.json (formato anterior) la primera vez y lo aparta para no reimportarlo. */
 function importLegacyJson(): void {
   const legacy = join(DATA_DIR, "lists.json");

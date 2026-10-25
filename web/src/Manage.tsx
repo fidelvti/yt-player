@@ -5,9 +5,11 @@ interface Props {
   subs: Subscription[];
   lists: ChannelList[];
   onChange: (lists: ChannelList[]) => void;
+  onRefresh: () => void;
+  refreshing: boolean;
 }
 
-export function Manage({ subs, lists, onChange }: Props) {
+export function Manage({ subs, lists, onChange, onRefresh, refreshing }: Props) {
   const [newName, setNewName] = useState("");
 
   const listOf = (channelId: string) => lists.find((l) => l.channelIds.includes(channelId))?.id ?? "";
@@ -33,9 +35,14 @@ export function Manage({ subs, lists, onChange }: Props) {
 
   return (
     <div>
-      <header className="page-header">
-        <h2>Gestionar listas</h2>
-        <p>{unassigned} de {subs.length} canales sin lista.</p>
+      <header className="page-header with-action">
+        <div>
+          <h2>Gestionar listas</h2>
+          <p>{unassigned} de {subs.length} canales sin lista.</p>
+        </div>
+        <button className="btn" disabled={refreshing} onClick={onRefresh}>
+          {refreshing ? "Actualizando…" : "↻ Actualizar suscripciones"}
+        </button>
       </header>
       <form onSubmit={addList} className="create-form">
         <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Nueva lista (p. ej. Finanzas)" />

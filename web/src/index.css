@@ -139,7 +139,13 @@ main { padding: 28px 32px 48px; min-width: 0; }
 .summarized-btn.below-badge { top: 34px; }
 .summarized-btn:hover { filter: brightness(1.15); text-decoration: underline; }
 .card .playing-badge { background: var(--accent); color: #fff; }
-.card .watched-badge { background: #000000b8; color: #fff; backdrop-filter: blur(4px); }
+.watched-btn {
+  position: absolute; left: 8px; top: 8px;
+  font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px;
+  border: 0; background: #000000b8; color: #fff; backdrop-filter: blur(4px); transition: background .15s;
+}
+.watched-btn:hover { background: var(--accent); }
+.watched-btn:hover::after { content: " · quitar"; }
 /* Visto: miniatura apagada y en gris, título atenuado; se recupera al pasar el ratón */
 .card.is-watched img { filter: grayscale(1) brightness(.6); opacity: .75; transition: filter .2s, opacity .2s, transform .25s; }
 .card.is-watched strong, .card.is-watched .meta { opacity: .55; }
@@ -264,3 +270,17 @@ main { padding: 28px 32px 48px; min-width: 0; }
 .history button:hover { border-color: var(--accent); }
 .history .when { font-size: 13px; color: var(--muted); }
 .history .titles { font-weight: 600; }
+
+.page-header.with-action { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.status.refreshing { padding: 0 0 16px; text-align: left; }
+.notice { color: var(--accent); font-weight: 600; }
+nav .item.logout { color: var(--muted); font-size: 14px; }
+.regenerate { display: flex; align-items: center; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+
+.banner {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  margin: 0 0 20px; padding: 10px 14px; max-width: 760px;
+  background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 10px; font-size: 14px;
+}
+.banner button { border: 0; background: none; font-size: 18px; line-height: 1; color: var(--muted); padding: 0 4px; }
+.btn:disabled { opacity: .6; cursor: default; }

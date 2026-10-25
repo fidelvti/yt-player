@@ -4,12 +4,12 @@ import { History } from "./History";
 import { Manage } from "./Manage";
 import { Player } from "./Player";
 import { Summary } from "./Summary";
-import type { ChannelList, FeedVideo, Subscription, SummaryResult } from "./types";
+import type { ChannelList, FeedVideo, Subscription, SubscriptionsResponse, SummaryResult, VideoRef } from "./types";
 
 const MANAGE = "manage";
 const HISTORY = "history";
 
-type Panel = { kind: "new"; videos: FeedVideo[] } | { kind: "stored"; summary: SummaryResult };
+type Panel = { kind: "new"; videos: VideoRef[] } | { kind: "stored"; summary: SummaryResult };
 
 export function App() {
   const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
@@ -21,6 +21,10 @@ export function App() {
   const [summaries, setSummaries] = useState<SummaryResult[]>([]);
   const [selected, setSelected] = useState<Map<string, FeedVideo>>(new Map());
   const [panel, setPanel] = useState<Panel | null>(null);
+  const [sessionExpired, setSessionExpired] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [subsNotice, setSubsNotice] = useState<string | null>(null);
+  const [refreshingSubs, setRefreshingSubs] = useState(false);
 
   useEffect(() => {
     fetch("/api/me")
@@ -28,21 +32,54 @@ export function App() {
       .then((d: { loggedIn: boolean }) => setLoggedIn(d.loggedIn));
   }, []);
 
+  /** Lee las suscripciones (el servidor quita de las listas las bajas) y después recarga las listas. */
+  async function loadSubscriptions(): Promise<ChannelList[] | null> {
+    setRefreshingSubs(true);
+    try {
+      const r = await fetch("/api/subscriptions");
+      if (r.status === 401) {
+        // El acceso a Google ha caducado (el servidor ya ha descartado el token).
+        setSessionExpired(true);
+        setLoggedIn(false);
+        return null;
+      }
+      const body = (await r.json()) as Partial<SubscriptionsResponse>;
+      if (r.ok && Array.isArray(body.subscriptions)) {
+        setSubs(body.subscriptions);
+        if (body.pruneSkipped) {
+          const { wouldRemove, total } = body.pruneSkipped;
+          setSubsNotice(
+            `No se han quitado ${wouldRemove} de ${total} canales de tus listas aunque no aparecen en tus suscripciones: son demasiados de golpe y puede ser un fallo de YouTube. Prueba más tarde con "Actualizar suscripciones".`,
+          );
+        } else if (body.pruned) {
+          setSubsNotice(
+            `Se ${body.pruned === 1 ? "ha quitado 1 canal" : `han quitado ${body.pruned} canales`} de tus listas porque ya no estás suscrito.`,
+          );
+        }
+      }
+    } catch {
+      // sin conexión: se siguen usando las listas guardadas
+    } finally {
+      setRefreshingSubs(false);
+    }
+    const saved = (await fetch("/api/lists").then((r) => r.json())) as ChannelList[];
+    setLists(saved);
+    return saved;
+  }
+
   useEffect(() => {
     if (!loggedIn) return;
-    fetch("/api/subscriptions").then((r) => r.json()).then(setSubs);
     fetch("/api/watched")
       .then((r) => r.json())
       .then((ids: string[]) => setWatched(new Set(ids)));
     fetch("/api/summaries")
       .then((r) => r.json())
       .then(setSummaries);
-    fetch("/api/lists")
-      .then((r) => r.json())
-      .then((l: ChannelList[]) => {
-        setLists(l);
-        if (l.length > 0) setView(l[0].id);
-      });
+    void loadSubscriptions().then((saved) => {
+      if (saved && saved.length > 0) setView(saved[0].id);
+    });
+    // loadSubscriptions solo usa setters estables
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loggedIn]);
 
   async function saveLists(next: ChannelList[]) {
@@ -82,6 +119,27 @@ export function App() {
     });
   }
 
+  function unmarkWatched(videoId: string) {
+    setWatched((prev) => {
+      const next = new Set(prev);
+      next.delete(videoId);
+      return next;
+    });
+    void fetch(`/api/watched/${videoId}`, { method: "DELETE" });
+  }
+
+  async function logout() {
+    await fetch("/auth/logout", { method: "POST" });
+    setSessionExpired(false);
+    setSubs([]);
+    setLists([]);
+    setSubsNotice(null);
+    setSelected(new Map());
+    setPlaying(null);
+    setPanel(null);
+    setLoggedIn(false);
+  }
+
   function markWatched(videoId: string) {
     setWatched((prev) => (prev.has(videoId) ? prev : new Set(prev).add(videoId)));
     void fetch(`/api/watched/${videoId}`, { method: "POST" });
@@ -94,7 +152,11 @@ export function App() {
       <main className="login">
         <div className="logo">▶</div>
         <h1>yt-player</h1>
-        <p>Tus suscripciones de YouTube, en listas a tu medida.</p>
+        {sessionExpired ? (
+          <p className="notice">Tu sesión de Google ha caducado. Vuelve a iniciar sesión para seguir.</p>
+        ) : (
+          <p>Tus suscripciones de YouTube, en listas a tu medida.</p>
+        )}
         <a className="btn primary" href="/auth/login">Iniciar sesión con Google</a>
       </main>
     );
@@ -121,18 +183,32 @@ export function App() {
         <button className={`item ${view === MANAGE ? "active" : ""}`} onClick={() => changeView(MANAGE)}>
           Gestionar listas
         </button>
+        <button className="item logout" onClick={logout}>
+          Cerrar sesión
+        </button>
       </nav>
       <main>
+        {subsNotice && (
+          <p className="banner">
+            <span>{subsNotice}</span>
+            <button aria-label="Cerrar aviso" onClick={() => setSubsNotice(null)}>×</button>
+          </p>
+        )}
         {view === HISTORY ? (
           <History summaries={summaries} onOpen={openSummary} />
         ) : view === MANAGE || !currentList ? (
-          <Manage subs={subs} lists={lists} onChange={saveLists} />
+          <Manage subs={subs} lists={lists} onChange={saveLists} onRefresh={loadSubscriptions} refreshing={refreshingSubs} />
         ) : (
           <>
             {playing && <Player video={playing} onStarted={markWatched} onClose={() => setPlaying(null)} />}
-            <header className="page-header">
-              <h2>{currentList.name}</h2>
-              <p>Vídeos recientes de {currentList.channelIds.length} canales</p>
+            <header className="page-header with-action">
+              <div>
+                <h2>{currentList.name}</h2>
+                <p>Vídeos recientes de {currentList.channelIds.length} canales</p>
+              </div>
+              <button className="btn" onClick={() => setRefreshKey((k) => k + 1)}>
+                ↻ Actualizar
+              </button>
             </header>
             <Feed
               listId={currentList.id}
@@ -143,6 +219,8 @@ export function App() {
               onPlay={setPlaying}
               onToggleSelect={toggleSelect}
               onOpenSummary={openSummary}
+              onUnwatch={unmarkWatched}
+              refreshKey={refreshKey}
             />
           </>
         )}
@@ -162,6 +240,7 @@ export function App() {
           videos={panel.kind === "new" ? panel.videos : undefined}
           stored={panel.kind === "stored" ? panel.summary : undefined}
           onSummarized={addSummary}
+          onRegenerate={(videos) => setPanel({ kind: "new", videos })}
           onClose={() => setPanel(null)}
         />
       )}

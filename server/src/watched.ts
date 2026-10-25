@@ -17,6 +17,10 @@ export function listWatched(): string[] {
   return rows.map((r) => r.video_id);
 }
 
+export function unmarkWatched(videoId: string): void {
+  db.prepare("DELETE FROM watched WHERE video_id = ?").run(videoId);
+}
+
 /** Marca como visto; si ya lo estaba, renueva la fecha y vuelve a empezar la semana. */
 export function markWatched(videoId: string): void {
   purgeExpired();

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Política de privacidad · yt-player</title>
+  <meta name="description" content="Política de privacidad de yt-player: qué datos usa la aplicación, dónde se guardan y con quién se comparten.">
+  <style>
+    :root { color-scheme: light dark; --bg:#f6f6f7; --surface:#fff; --border:#e2e2e6; --text:#17171a; --muted:#6b6b76; --accent:#e5484d; }
+    @media (prefers-color-scheme: dark) { :root { --bg:#0e0e10; --surface:#17171a; --border:#2a2a30; --text:#f0f0f3; --muted:#9a9aa6; } }
+    * { box-sizing: border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font:16px/1.65 -apple-system,BlinkMacSystemFont,"Inter","Segoe UI",system-ui,sans-serif; }
+    main { max-width:720px; margin:0 auto; padding:48px 20px 64px; }
+    h1 { font-size:30px; letter-spacing:-.02em; margin:12px 0 4px; }
+    h2 { font-size:20px; margin:32px 0 8px; }
+    .meta { color:var(--muted); font-size:14px; }
+    ul { padding-left:22px; }
+    a { color:var(--accent); }
+    nav a { text-decoration:none; font-size:14px; }
+    footer { margin-top:44px; padding-top:20px; border-top:1px solid var(--border); color:var(--muted); font-size:14px; }
+  </style>
+</head>
+<body>
+<main>
+  <nav><a href="./">← yt-player</a></nav>
+  <h1>Política de privacidad de yt-player</h1>
+  <p class="meta">Última actualización: 25 de octubre de 2026</p>
+
+  <p>yt-player es una aplicación personal de código abierto que cada usuario ejecuta en su propio ordenador. No existe ningún servidor central: el autor no recibe, almacena ni procesa ningún dato de quienes la usan.</p>
+
+  <h2>Qué datos de Google se utilizan</h2>
+  <p>Al iniciar sesión, la app solicita un único permiso, de <strong>solo lectura</strong>: <code>https://www.googleapis.com/auth/youtube.readonly</code>. Lo usa para leer la lista de canales a los que estás suscrito, de modo que puedas organizarlos en listas. No puede modificar tu cuenta, tus suscripciones ni tus vídeos.</p>
+
+  <h2>Dónde se guardan los datos</h2>
+  <p>Todo se guarda <strong>únicamente en tu ordenador</strong>, en la carpeta <code>data/</code> de la aplicación:</p>
+  <ul>
+    <li>Los tokens de acceso a tu cuenta de Google.</li>
+    <li>Tus listas de canales, los vídeos que has visto y los resúmenes que has generado.</li>
+  </ul>
+  <p>Puedes borrarlos en cualquier momento eliminando esa carpeta. También puedes revocar el acceso de la aplicación desde <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>.</p>
+
+  <h2>Con quién se comparten</h2>
+  <ul>
+    <li><strong>Google / YouTube:</strong> la aplicación se comunica con sus servicios para leer tus suscripciones y reproducir vídeos.</li>
+    <li><strong>Anthropic:</strong> cuando pides un resumen, el texto de las transcripciones de los vídeos seleccionados se envía a la API de Anthropic para generarlo. No se envían tus datos de cuenta de Google ni tu lista de suscripciones.</li>
+  </ul>
+  <p>Los datos no se venden, no se ceden a terceros y no se usan con fines publicitarios.</p>
+
+  <h2>Servicios de API de YouTube</h2>
+  <p>yt-player utiliza los servicios de API de YouTube. Al usar la aplicación aceptas las <a href="https://www.youtube.com/t/terms">Condiciones del Servicio de YouTube</a> y la <a href="https://policies.google.com/privacy">Política de Privacidad de Google</a>.</p>
+
+  <h2>Uso limitado de los datos de Google</h2>
+  <p>El uso que yt-player hace de la información recibida de las API de Google se ajusta a la <a href="https://developers.google.com/terms/api-services-user-data-policy">Política de datos de usuario de los servicios de API de Google</a>, incluidos los requisitos de uso limitado (<em>Limited Use</em>).</p>
+
+  <h2>Contacto</h2>
+  <p>Para cualquier duda, abre una incidencia en <a href="https://github.com/fidelvti/yt-player/issues">github.com/fidelvti/yt-player/issues</a>.</p>
+
+  <footer>
+    <p><strong>English summary:</strong> yt-player is a personal, open-source app that runs locally on each user's computer. It requests read-only access to your YouTube subscriptions (<code>youtube.readonly</code>). All data stays on your machine; nothing is sent to the author. When you request a summary, the transcripts of the selected videos are sent to Anthropic's API. Data is never sold or used for advertising, and use of Google user data complies with the Google API Services User Data Policy, including its Limited Use requirements. The app uses YouTube API Services and is subject to the YouTube Terms of Service and the Google Privacy Policy.</p>
+  </footer>
+</main>
+</body>
+</html>

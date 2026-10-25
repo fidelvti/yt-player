@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>yt-player</title>
+  <meta name="description" content="yt-player es una aplicación personal de código abierto para ver las suscripciones de YouTube organizadas en listas.">
+  <style>
+    :root { color-scheme: light dark; --bg:#f6f6f7; --surface:#fff; --border:#e2e2e6; --text:#17171a; --muted:#6b6b76; --accent:#e5484d; }
+    @media (prefers-color-scheme: dark) { :root { --bg:#0e0e10; --surface:#17171a; --border:#2a2a30; --text:#f0f0f3; --muted:#9a9aa6; } }
+    * { box-sizing: border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font:16px/1.6 -apple-system,BlinkMacSystemFont,"Inter","Segoe UI",system-ui,sans-serif; }
+    main { max-width:720px; margin:0 auto; padding:56px 20px 64px; }
+    .logo { width:44px; height:44px; display:grid; place-items:center; background:var(--accent); color:#fff; border-radius:12px; font-size:18px; }
+    h1 { font-size:34px; letter-spacing:-.02em; margin:16px 0 8px; }
+    h2 { font-size:20px; margin:36px 0 8px; }
+    p, li { color:var(--text); }
+    .lead { color:var(--muted); font-size:18px; margin:0 0 8px; }
+    ul { padding-left:22px; }
+    a { color:var(--accent); }
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 20px; margin-top:12px; }
+    footer { margin-top:48px; padding-top:20px; border-top:1px solid var(--border); color:var(--muted); font-size:14px; }
+  </style>
+</head>
+<body>
+<main>
+  <div class="logo">▶</div>
+  <h1>yt-player</h1>
+  <p class="lead">Tus suscripciones de YouTube, organizadas en listas a tu medida.</p>
+
+  <h2>Qué es</h2>
+  <p>yt-player es una aplicación personal y de código abierto que cada usuario ejecuta en su propio ordenador. Sirve para ver los vídeos de YouTube de forma más tranquila: sin buscador, sin comentarios y sin distracciones.</p>
+
+  <h2>Qué hace</h2>
+  <ul>
+    <li>Lee la lista de canales a los que estás suscrito, con un permiso de <strong>solo lectura</strong>, para que puedas agruparlos en listas propias.</li>
+    <li>Muestra los vídeos recientes de los canales de cada lista.</li>
+    <li>Reproduce los vídeos con el reproductor incrustado de YouTube, con velocidad ajustable.</li>
+    <li>Genera, a petición del usuario, un resumen de los vídeos seleccionados.</li>
+  </ul>
+
+  <h2>Tus datos</h2>
+  <div class="card">
+    <p style="margin:0">Todo se guarda únicamente en tu ordenador. El autor no recibe ni almacena ningún dato de los usuarios. Consulta la <a href="privacy.html"><strong>política de privacidad</strong></a> para ver el detalle.</p>
+  </div>
+
+  <h2>Código fuente</h2>
+  <p>El proyecto es abierto: <a href="https://github.com/fidelvti/yt-player">github.com/fidelvti/yt-player</a>.</p>
+
+  <footer>
+    <p>yt-player utiliza los servicios de API de YouTube. Al usar la aplicación aceptas las <a href="https://www.youtube.com/t/terms">Condiciones del Servicio de YouTube</a> y la <a href="https://policies.google.com/privacy">Política de Privacidad de Google</a>.</p>
+    <p><a href="privacy.html">Política de privacidad</a> · <a href="https://github.com/fidelvti/yt-player">Código fuente</a></p>
+    <p><em>English:</em> yt-player is a personal, open-source app that runs locally on each user's computer. It reads your YouTube subscriptions (read-only) so you can group channels into lists and watch their latest videos. No user data is collected by the author.</p>
+  </footer>
+</main>
+</body>
+</html>

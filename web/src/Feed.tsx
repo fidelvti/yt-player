@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { FeedVideo } from "./types";
+import type { FeedResponse, FeedVideo } from "./types";
 
 const rtf = new Intl.RelativeTimeFormat("es", { numeric: "auto" });
 
@@ -21,6 +21,8 @@ interface FeedProps {
   onUnwatch: (videoId: string) => void;
   /** Aumenta cada vez que se pide actualizar: fuerza a saltarse la caché del servidor. */
   refreshKey: number;
+  /** Nombres de canal por id, para avisar de cuáles no han respondido. */
+  channelTitles: Map<string, string>;
 }
 
 export function Feed({
@@ -34,8 +36,11 @@ export function Feed({
   onOpenSummary,
   onUnwatch,
   refreshKey,
+  channelTitles,
 }: FeedProps) {
   const [videos, setVideos] = useState<FeedVideo[] | null>(null);
+  const [failed, setFailed] = useState<string[]>([]);
+  const [staleCount, setStaleCount] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
 
   // Al cambiar de lista se vacía el feed; al actualizar se mantiene el anterior hasta que llegue el nuevo.
@@ -48,8 +53,11 @@ export function Feed({
     setRefreshing(true);
     fetch(`/api/lists/${listId}/feed${refreshKey > 0 ? "?refresh=1" : ""}`)
       .then((r) => r.json())
-      .then((v: FeedVideo[]) => {
-        if (!cancelled) setVideos(v);
+      .then((r: FeedResponse) => {
+        if (cancelled) return;
+        setVideos(r.videos);
+        setFailed(r.failed);
+        setStaleCount(r.stale.length);
       })
       .finally(() => {
         if (!cancelled) setRefreshing(false);
@@ -64,6 +72,20 @@ export function Feed({
 
   return (
     <>
+      {(failed.length > 0 || staleCount > 0) && (
+        <p className="banner">
+          <span>
+            {failed.length > 0 && (
+              <>
+                YouTube no ha respondido para {failed.length === 1 ? "1 canal" : `${failed.length} canales`} y sus vídeos no aparecen:{" "}
+                {failed.slice(0, 3).map((id) => channelTitles.get(id) ?? id).join(", ")}
+                {failed.length > 3 && ` y ${failed.length - 3} más`}. Pulsa Actualizar para reintentar.{" "}
+              </>
+            )}
+            {staleCount > 0 && `${staleCount === 1 ? "1 canal" : `${staleCount} canales`} no ha respondido y se muestran sus vídeos de la última carga correcta.`}
+          </span>
+        </p>
+      )}
       {refreshing && <p className="status refreshing"><span className="spinner" /> Actualizando…</p>}
       <div className="grid">
         {videos.map((v) => {

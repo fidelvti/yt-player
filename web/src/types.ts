@@ -10,6 +10,14 @@ export interface ChannelList {
   channelIds: string[];
 }
 
+export interface FeedResponse {
+  videos: FeedVideo[];
+  /** Canales que no respondieron y no tienen datos anteriores: sus vídeos faltan. */
+  failed: string[];
+  /** Canales que no respondieron pero se muestran con los datos de la última carga correcta. */
+  stale: string[];
+}
+
 export interface SubscriptionsResponse {
   subscriptions: Subscription[];
   /** Canales quitados de las listas por haberte dado de baja. */

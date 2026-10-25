@@ -92,6 +92,7 @@ export function App() {
   }
 
   const currentList = lists.find((l) => l.id === view);
+  const channelTitles = new Map(subs.map((s) => [s.channelId, s.title]));
 
   // Vídeo -> su resumen más reciente (summaries llega ordenado de más nuevo a más antiguo).
   const summarized = new Map<string, number>();
@@ -221,6 +222,7 @@ export function App() {
               onOpenSummary={openSummary}
               onUnwatch={unmarkWatched}
               refreshKey={refreshKey}
+              channelTitles={channelTitles}
             />
           </>
         )}

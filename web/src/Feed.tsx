@@ -9,7 +9,14 @@ function timeAgo(iso: string): string {
   return rtf.format(Math.round(hours / 24), "day");
 }
 
-export function Feed({ listId }: { listId: string }) {
+interface FeedProps {
+  listId: string;
+  playingId?: string;
+  watched: Set<string>;
+  onPlay: (v: FeedVideo) => void;
+}
+
+export function Feed({ listId, playingId, watched, onPlay }: FeedProps) {
   const [videos, setVideos] = useState<FeedVideo[] | null>(null);
 
   useEffect(() => {
@@ -19,19 +26,30 @@ export function Feed({ listId }: { listId: string }) {
       .then(setVideos);
   }, [listId]);
 
-  if (!videos) return <p>Cargando vídeos…</p>;
-  if (videos.length === 0) return <p>Esta lista no tiene canales o no hay vídeos recientes.</p>;
+  if (!videos) return <p className="status">Cargando vídeos…</p>;
+  if (videos.length === 0) return <p className="status">Esta lista no tiene canales o no hay vídeos recientes.</p>;
 
   return (
     <div className="grid">
       {videos.map((v) => (
-        <a key={v.videoId} className="card" href={`https://www.youtube.com/watch?v=${v.videoId}`} target="_blank" rel="noreferrer">
-          <img src={v.thumbnail} alt="" />
+        <button
+          key={v.videoId}
+          className={`card ${v.videoId === playingId ? "is-playing" : ""} ${watched.has(v.videoId) ? "is-watched" : ""}`}
+          onClick={() => onPlay(v)}
+        >
+          <div className="thumb">
+            <img src={v.thumbnail} alt="" loading="lazy" />
+            {v.videoId === playingId ? (
+              <span className="badge playing-badge">Reproduciendo</span>
+            ) : (
+              watched.has(v.videoId) && <span className="badge watched-badge">✓ Visto</span>
+            )}
+          </div>
           <strong>{v.title}</strong>
-          <span>
+          <span className="meta">
             {v.channelTitle} · {timeAgo(v.published)}
           </span>
-        </a>
+        </button>
       ))}
     </div>
   );

@@ -2,6 +2,7 @@ import express from "express";
 import { authUrl, authedClient, createClient, handleCallback } from "./auth.js";
 import { fetchFeed } from "./feed.js";
 import { loadLists, parseLists, saveLists } from "./lists.js";
+import { isVideoId, listWatched, markWatched } from "./watched.js";
 import { listSubscriptions } from "./youtube.js";
 
 const app = express();
@@ -66,6 +67,19 @@ app.get("/api/lists/:id/feed", async (req, res) => {
     return;
   }
   res.json(await fetchFeed(list.channelIds));
+});
+
+app.get("/api/watched", (_req, res) => {
+  res.json(listWatched());
+});
+
+app.post("/api/watched/:videoId", (req, res) => {
+  if (!isVideoId(req.params.videoId)) {
+    res.status(400).json({ error: "videoId no válido" });
+    return;
+  }
+  markWatched(req.params.videoId);
+  res.status(204).end();
 });
 
 app.listen(port, () => console.log(`Servidor en http://localhost:${port}`));

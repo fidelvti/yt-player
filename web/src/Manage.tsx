@@ -33,17 +33,20 @@ export function Manage({ subs, lists, onChange }: Props) {
 
   return (
     <div>
-      <form onSubmit={addList} className="row">
+      <header className="page-header">
+        <h2>Gestionar listas</h2>
+        <p>{unassigned} de {subs.length} canales sin lista.</p>
+      </header>
+      <form onSubmit={addList} className="create-form">
         <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Nueva lista (p. ej. Finanzas)" />
-        <button>Crear</button>
+        <button className="btn primary">Crear lista</button>
       </form>
-      <p>{unassigned} de {subs.length} canales sin lista.</p>
       <ul className="subs">
         {subs.map((s) => (
           <li key={s.channelId}>
             <img src={s.thumbnail} width={32} height={32} alt="" />
             <span>{s.title}</span>
-            <select value={listOf(s.channelId)} onChange={(e) => assign(s.channelId, e.target.value)}>
+            <select className={listOf(s.channelId) ? "assigned" : ""} value={listOf(s.channelId)} onChange={(e) => assign(s.channelId, e.target.value)}>
               <option value="">Sin lista</option>
               {lists.map((l) => (
                 <option key={l.id} value={l.id}>{l.name}</option>

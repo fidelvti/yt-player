@@ -1,6 +1,6 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { existsSync, readFileSync, renameSync } from "node:fs";
+import { join } from "node:path";
+import { DATA_DIR, db, transaction } from "./db.js";
 
 export interface ChannelList {
   id: string;
@@ -8,14 +8,20 @@ export interface ChannelList {
   channelIds: string[];
 }
 
-const LISTS_PATH = join(dirname(fileURLToPath(import.meta.url)), "../../data/lists.json");
-
 export async function loadLists(): Promise<ChannelList[]> {
-  try {
-    return JSON.parse(await readFile(LISTS_PATH, "utf8")) as ChannelList[];
-  } catch {
-    return [];
-  }
+  const lists = db.prepare("SELECT id, name FROM lists ORDER BY position").all() as {
+    id: string;
+    name: string;
+  }[];
+  const channels = db
+    .prepare("SELECT list_id, channel_id FROM list_channels ORDER BY position")
+    .all() as { list_id: string; channel_id: string }[];
+
+  return lists.map((l) => ({
+    id: l.id,
+    name: l.name,
+    channelIds: channels.filter((c) => c.list_id === l.id).map((c) => c.channel_id),
+  }));
 }
 
 /** Valida la forma y que ningún canal esté en más de una lista. */
@@ -41,7 +47,40 @@ export function parseLists(input: unknown): ChannelList[] | null {
   return lists;
 }
 
-export async function saveLists(lists: ChannelList[]): Promise<void> {
-  await mkdir(dirname(LISTS_PATH), { recursive: true });
-  await writeFile(LISTS_PATH, JSON.stringify(lists, null, 2));
+/** Sustituye todas las listas por las recibidas, de forma atómica. */
+function writeLists(lists: ChannelList[]): void {
+  transaction(() => {
+    db.exec("DELETE FROM list_channels; DELETE FROM lists;");
+    const insertList = db.prepare("INSERT INTO lists (id, name, position) VALUES (?, ?, ?)");
+    const insertChannel = db.prepare(
+      "INSERT INTO list_channels (channel_id, list_id, position) VALUES (?, ?, ?)",
+    );
+    lists.forEach((l, i) => {
+      insertList.run(l.id, l.name, i);
+      l.channelIds.forEach((c, j) => insertChannel.run(c, l.id, j));
+    });
+  });
 }
+
+export async function saveLists(lists: ChannelList[]): Promise<void> {
+  writeLists(lists);
+}
+
+/** Importa data/lists.json (formato anterior) la primera vez y lo aparta para no reimportarlo. */
+function importLegacyJson(): void {
+  const legacy = join(DATA_DIR, "lists.json");
+  if (!existsSync(legacy)) return;
+  const existing = db.prepare("SELECT COUNT(*) AS n FROM lists").get() as { n: number };
+  if (existing.n > 0) return;
+
+  const lists = parseLists(JSON.parse(readFileSync(legacy, "utf8")));
+  if (!lists) {
+    console.error("data/lists.json no es válido; no se importa");
+    return;
+  }
+  writeLists(lists);
+  renameSync(legacy, join(DATA_DIR, "lists.json.migrado"));
+  console.log(`Importadas ${lists.length} listas de lists.json a SQLite`);
+}
+
+importLegacyJson();

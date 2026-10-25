@@ -13,6 +13,7 @@ const CACHE_MS = 5 * 60 * 1000;
 const cache = new Map<string, { at: number; videos: FeedVideo[] }>();
 
 const parser = new XMLParser({
+  ignoreAttributes: false,
   isArray: (name) => name === "entry",
 });
 
@@ -20,6 +21,12 @@ interface RssEntry {
   "yt:videoId": string;
   title: string;
   published: string;
+  link: { "@_href": string };
+}
+
+/** El RSS no marca los shorts, pero su enlace es /shorts/<id> en vez de /watch?v=<id>. */
+function isShort(entry: RssEntry): boolean {
+  return entry.link?.["@_href"]?.includes("/shorts/") ?? false;
 }
 
 async function fetchChannelFeed(channelId: string): Promise<FeedVideo[]> {
@@ -33,7 +40,7 @@ async function fetchChannelFeed(channelId: string): Promise<FeedVideo[]> {
   const channelTitle = String(feed?.title ?? "");
   const entries: RssEntry[] = feed?.entry ?? [];
 
-  const videos = entries.map((e) => ({
+  const videos = entries.filter((e) => !isShort(e)).map((e) => ({
     videoId: e["yt:videoId"],
     title: String(e.title),
     channelId,

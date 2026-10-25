@@ -1,0 +1,27 @@
+# Dependencias
+node_modules/
+
+# Build
+dist/
+build/
+.vite/
+*.tsbuildinfo
+
+# Secretos y configuración local (claves de API, tokens OAuth)
+.env
+.env.*
+!.env.example
+*.local
+
+# Datos locales (listas, caché de transcripciones y resúmenes)
+data/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Sistema y editores
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json

@@ -3,6 +3,8 @@ import { Feed } from "./Feed";
 import { History } from "./History";
 import { Manage } from "./Manage";
 import { Player } from "./Player";
+import { SidebarList } from "./SidebarList";
+import { deleteList, renameList } from "./listOps";
 import { Summary } from "./Summary";
 import type { ChannelList, FeedVideo, Subscription, SubscriptionsResponse, SummaryResult, VideoRef } from "./types";
 
@@ -107,6 +109,12 @@ export function App() {
     setSummaries((prev) => (prev.some((s) => s.id === result.id) ? prev : [result, ...prev]));
   }
 
+  function removeList(id: string) {
+    const remaining = deleteList(lists, id);
+    void saveLists(remaining);
+    if (view === id) changeView(remaining[0]?.id ?? MANAGE); // la vista abierta ya no existe
+  }
+
   function changeView(next: string) {
     setView(next);
     setSelected(new Map()); // la selección es de una lista concreta
@@ -173,9 +181,14 @@ export function App() {
         <div className="nav-label">Listas</div>
         {lists.length === 0 && <p className="nav-hint">Aún no tienes listas.</p>}
         {lists.map((l) => (
-          <button key={l.id} className={`item ${view === l.id ? "active" : ""}`} onClick={() => changeView(l.id)}>
-            {l.name} <span className="count">{l.channelIds.length}</span>
-          </button>
+          <SidebarList
+            key={l.id}
+            list={l}
+            active={view === l.id}
+            onSelect={() => changeView(l.id)}
+            onRename={(name) => void saveLists(renameList(lists, l.id, name))}
+            onDelete={() => removeList(l.id)}
+          />
         ))}
         <div className="spacer" />
         <button className={`item ${view === HISTORY ? "active" : ""}`} onClick={() => changeView(HISTORY)}>

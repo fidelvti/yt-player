@@ -295,3 +295,27 @@ nav .item.logout { color: var(--muted); font-size: 14px; }
 .segmented .count { margin-left: 6px; font-size: 12px; font-weight: 500; opacity: .7; }
 .status.done { color: var(--text); }
 button.link { border: 0; background: none; padding: 0; color: var(--accent); text-decoration: underline; }
+
+/* Filas de la barra lateral con acciones */
+.item-row { position: relative; display: flex; align-items: center; border-radius: 8px; }
+.item-row .item { flex: 1; min-width: 0; }
+.item-row:hover { background: var(--surface-2); }
+.item-row.active { background: var(--accent-soft); }
+.item-row.active .item { color: var(--accent); font-weight: 600; background: none; }
+.item-row .item:hover { background: none; }
+.item-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.item-actions { position: absolute; right: 6px; display: none; gap: 2px; }
+.item-row:hover .item-actions, .item-row:focus-within .item-actions { display: flex; }
+.item-row:hover .count, .item-row:focus-within .count { visibility: hidden; }
+.item-actions button {
+  display: grid; place-items: center; width: 26px; height: 26px; padding: 0;
+  border: 0; border-radius: 6px; background: var(--surface); color: var(--muted);
+}
+.item-actions button:hover { color: var(--text); background: var(--border); }
+.item-actions button:last-child:hover { color: #fff; background: var(--accent); }
+.item-row.editing input { width: 100%; margin: 0; padding: 7px 10px; border-radius: 8px; }
+.item-row.confirming { gap: 6px; padding: 6px 8px; background: var(--accent-soft); font-size: 13px; }
+.confirm-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.confirm-yes, .confirm-no { border: 0; border-radius: 6px; padding: 4px 9px; font-size: 12px; font-weight: 600; }
+.confirm-yes { background: var(--accent); color: #fff; }
+.confirm-no { background: var(--surface); color: var(--text); }

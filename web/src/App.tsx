@@ -4,7 +4,7 @@ import { History } from "./History";
 import { Manage } from "./Manage";
 import { Player } from "./Player";
 import { SidebarList } from "./SidebarList";
-import { deleteList, renameList } from "./listOps";
+import { deleteList, renameList, sortByName } from "./listOps";
 import { Summary } from "./Summary";
 import type { ChannelList, FeedVideo, Subscription, SubscriptionsResponse, SummaryResult, VideoRef } from "./types";
 
@@ -78,7 +78,7 @@ export function App() {
       .then((r) => r.json())
       .then(setSummaries);
     void loadSubscriptions().then((saved) => {
-      if (saved && saved.length > 0) setView(saved[0].id);
+      if (saved && saved.length > 0) setView(sortByName(saved)[0].id); // la primera de la barra lateral
     });
     // loadSubscriptions solo usa setters estables
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -112,7 +112,7 @@ export function App() {
   function removeList(id: string) {
     const remaining = deleteList(lists, id);
     void saveLists(remaining);
-    if (view === id) changeView(remaining[0]?.id ?? MANAGE); // la vista abierta ya no existe
+    if (view === id) changeView(sortByName(remaining)[0]?.id ?? MANAGE); // la vista abierta ya no existe
   }
 
   function changeView(next: string) {
@@ -180,7 +180,7 @@ export function App() {
         </div>
         <div className="nav-label">Listas</div>
         {lists.length === 0 && <p className="nav-hint">Aún no tienes listas.</p>}
-        {lists.map((l) => (
+        {sortByName(lists).map((l) => (
           <SidebarList
             key={l.id}
             list={l}

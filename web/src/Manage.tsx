@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { sortByName } from "./listOps";
 import type { ChannelList, Subscription } from "./types";
 
 interface Props {
@@ -38,6 +39,7 @@ export function Manage({ subs, lists, onChange, onRefresh, refreshing }: Props) 
   const listed = subs.length - unassigned;
   const percent = subs.length > 0 ? Math.round((listed / subs.length) * 100) : 0;
   const visible = filter === "unlisted" ? subs.filter((s) => !listOf(s.channelId)) : subs;
+  const sortedLists = sortByName(lists);
 
   return (
     <div>
@@ -92,7 +94,7 @@ export function Manage({ subs, lists, onChange, onRefresh, refreshing }: Props) 
                 onChange={(e) => assign(s.channelId, e.target.value)}
               >
                 <option value="">Sin lista</option>
-                {lists.map((l) => (
+                {sortedLists.map((l) => (
                   <option key={l.id} value={l.id}>
                     {l.name}
                   </option>

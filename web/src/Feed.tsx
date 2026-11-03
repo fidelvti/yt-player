@@ -78,7 +78,7 @@ export function Feed({
             {failed.length > 0 && (
               <>
                 YouTube no ha respondido para {failed.length === 1 ? "1 canal" : `${failed.length} canales`} y sus vídeos no aparecen:{" "}
-                {failed.slice(0, 3).map((id) => channelTitles.get(id) ?? id).join(", ")}
+                {failed.slice(0, 3).map((id) => `«${channelTitles.get(id) ?? id}»`).join(", ")}
                 {failed.length > 3 && ` y ${failed.length - 3} más`}. Pulsa Actualizar para reintentar.{" "}
               </>
             )}

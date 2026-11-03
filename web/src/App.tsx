@@ -14,7 +14,7 @@ const timeFmt = new Intl.DateTimeFormat("es", { hour: "2-digit", minute: "2-digi
 
 /** "A, B, C y 2 más". */
 function names(channels: ChannelRef[]): string {
-  const shown = channels.slice(0, 3).map((c) => c.title);
+  const shown = channels.slice(0, 3).map((c) => `«${c.title}»`); // entrecomillados: los nombres pueden llevar comas o barras
   const rest = channels.length - shown.length;
   return rest > 0 ? `${shown.join(", ")} y ${rest} más` : shown.join(", ");
 }
@@ -247,7 +247,9 @@ export function App() {
             <header className="page-header with-action">
               <div>
                 <h2>{currentList.name}</h2>
-                <p>Vídeos recientes de {currentList.channelIds.length} canales</p>
+                <p>
+                  Vídeos recientes de {currentList.channelIds.length} {currentList.channelIds.length === 1 ? "canal" : "canales"}
+                </p>
               </div>
               <button className="btn" onClick={() => setRefreshKey((k) => k + 1)}>
                 ↻ Actualizar

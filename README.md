@@ -6,7 +6,7 @@ Reproductor de YouTube personal, sencillo y a medida. Sin buscador, sin likes ni
 
 - **Login con tu cuenta de Google** y lectura de tus suscripciones (solo lectura).
 - **Listas de canales propias**: agrupa tus suscripciones (p. ej. 70 canales en 7 listas). Un canal solo puede estar en una lista. Las listas se renombran y borran con los iconos de la barra lateral; borrar una lista no pierde sus canales, solo vuelven a quedar *sin lista*.
-- **Gestionar listas** con filtro de canales sin lista y barra de progreso. Si te das de baja de un canal en YouTube, se quita solo de tus listas.
+- **Gestionar listas** con filtro de canales sin lista y barra de progreso. Si te das de baja de un canal en YouTube, se quita de tus listas (ver *Bajas de suscripción*).
 - **Feed por lista** con los vídeos recientes de sus canales (vídeos y directos, sin shorts) y botón para actualizarlo.
 - **Reproductor** integrado con velocidad ajustable (1x a 2x, la última se recuerda). Con Premium en el navegador no muestra anuncios.
 - **Vídeos vistos**: se marcan al empezar a reproducirse, se atenúan en el feed y caducan a los 7 días. Pulsando la etiqueta *✓ Visto* se quita la marca.
@@ -68,7 +68,8 @@ server/src/
   youtube.ts     suscripciones (YouTube Data API)
   feed.ts        feed por canal: API de YouTube y, si falla, RSS; caché de 5 min
   uploads.ts     vídeos de un canal desde sus listas de subidas (UULF + UULV, sin shorts)
-  lists.ts       listas de canales y limpieza de bajas de suscripción
+  lists.ts       listas de canales
+  snapshot.ts    histórico de suscripciones y detección de bajas
   watched.ts     vídeos vistos (caducan a los 7 días)
   transcripts.ts transcripciones con yt-dlp, con caché
   summarize.ts   resumen con Claude, historial y gasto
@@ -82,8 +83,8 @@ docs/            sitio público (GitHub Pages): página principal y política de
 
 Nada de esto se sube a git:
 
-- `yt-player.db`: SQLite con listas, vistos, transcripciones (30 días), resúmenes (30 días) y gasto.
-- `tokens.json`: tokens de acceso a tu cuenta de Google. Trátalo como una contraseña.
+- `yt-player.db`: SQLite con listas, vistos, transcripciones (30 días), resúmenes (30 días), gasto y el histórico de suscripciones.
+- `tokens.json`: tokens de acceso a tu cuenta de Google. Trátalo como una contraseña. Si usas `YT_PLAYER_DATA`, tanto la base de datos como los tokens se leen de esa otra carpeta.
 
 Para empezar de cero basta con borrar `data/` (volverás a iniciar sesión). La variable opcional `YT_PLAYER_DATA` apunta a otra carpeta de datos, útil para probar sin tocar las listas reales.
 
@@ -104,7 +105,10 @@ Para empezar de cero basta con borrar `data/` (volverás a iniciar sesión). La 
 - **Coste**: cada resumen muestra lo que ha costado y el acumulado del mes, calculado con los tokens que devuelve la API.
 - **Feed**: los últimos ~15 vídeos de cada canal. La fuente principal es la API de YouTube (listas de subidas `UULF` para vídeos y `UULV` para directos, que dejan fuera los shorts de forma exacta). Cada actualización completa gasta unas 100 unidades de la cuota diaria gratuita de 10.000; si se agotara, se usa el RSS durante 10 minutos.
 - **RSS como respaldo**: el RSS de YouTube falla de forma intermitente (404/500 puntuales), por eso ya no es la fuente principal. Se usa si no hay sesión de Google o la API falla, con reintentos y, si aun así no responde, con los datos de la última carga correcta. Si un canal se queda sin datos, el feed lo avisa con su nombre.
-- **Bajas de suscripción**: al cargar la app o pulsar *Actualizar suscripciones* se quitan de las listas los canales de los que ya no estás suscrito. Si hubiera que quitar más de la mitad de golpe (posible fallo de YouTube), no se toca nada y se avisa.
+- **Bajas de suscripción**: al cargar la app o pulsar *Actualizar suscripciones* se compara tu lista de suscripciones con la lectura anterior (guardada en SQLite).
+  - Pocas bajas (hasta el 20 % de tus suscripciones, mínimo 5): el canal se quita de sus listas al momento y el aviso dice cuáles.
+  - Muchas a la vez: puede ser un fallo de YouTube, así que no se quita nada hasta que los canales sigan ausentes en una lectura posterior, **30 minutos o más** después de la primera. Si reaparecen entre medias, la cuenta empieza de nuevo. El aviso lista los canales, indica a partir de qué hora y ofrece **Quitar ahora** para no esperar.
+  - Una lectura vacía se ignora. Un canal dado de baja y quitado que vuelvas a seguir reaparece *sin lista*.
 
 ## Problemas frecuentes
 
@@ -113,7 +117,7 @@ Para empezar de cero basta con borrar `data/` (volverás a iniciar sesión). La 
 | `redirect_uri_mismatch` al iniciar sesión | El URI del cliente OAuth no es exactamente `http://localhost:3000/auth/callback` |
 | Hay que volver a iniciar sesión cada semana | La app de Google está en modo *Prueba*, que caduca el acceso a los 7 días. Pásala a *En producción*, lo que exige tener verificados los datos de la ficha (Branding), ver *Sitio público* |
 | Un canal no aparece en el feed y sale un aviso con su nombre | YouTube no respondió tras varios intentos; pulsa *Actualizar*. Los detalles quedan en la consola del servidor |
-| Un canal sigue en una lista aunque me di de baja | Se limpia al recargar o con *Actualizar suscripciones*. Si no se quita, puede haber saltado la salvaguarda (aviso en la app) |
+| Un canal sigue en una lista aunque me di de baja | Si eran muchas bajas a la vez, esperan 30 minutos de confirmación: recarga pasado ese tiempo o pulsa *Quitar ahora* en el aviso |
 | Aviso de "app no verificada" | Es esperado en una app personal; se puede continuar |
 | "yt-dlp no está instalado" | `brew install yt-dlp`, o apunta `YT_DLP_PATH` en `.env` al ejecutable |
 | yt-dlp falla con "The page needs to be reloaded" | Prueba otro cliente con `YT_DLP_PLAYER_CLIENT` en `.env` (por defecto `android_vr`) |

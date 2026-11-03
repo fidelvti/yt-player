@@ -1,7 +1,8 @@
 import express from "express";
 import { authUrl, authedClient, clearTokens, createClient, handleCallback, isAuthExpired } from "./auth.js";
 import { fetchFeed } from "./feed.js";
-import { loadLists, parseLists, pruneChannels, saveLists } from "./lists.js";
+import { loadLists, parseLists, saveLists } from "./lists.js";
+import { reconcileSubscriptions, removeMissingNow } from "./snapshot.js";
 import { listSummaries, monthUsage, parseVideoRefs, SummaryError, summarizedMap, summarize } from "./summarize.js";
 import { YtDlpMissingError } from "./transcripts.js";
 import { isVideoId, listWatched, markWatched, unmarkWatched } from "./watched.js";
@@ -47,9 +48,9 @@ app.get("/api/subscriptions", async (_req, res) => {
   }
   try {
     const subscriptions = await listSubscriptions(client);
-    // Las bajas de YouTube se reflejan en las listas: un canal que ya no sigues deja de aparecer en ellas.
-    const { removed, skipped } = pruneChannels(new Set(subscriptions.map((s) => s.channelId)));
-    res.json({ subscriptions, pruned: removed.length, pruneSkipped: skipped });
+    // Las bajas de YouTube se reflejan en las listas (ver snapshot.ts para cuándo se aplican).
+    const { removed, pending } = reconcileSubscriptions(subscriptions.map((s) => ({ channelId: s.channelId, title: s.title })));
+    res.json({ subscriptions, removed, pending });
   } catch (err) {
     if (isAuthExpired(err)) {
       await clearTokens(); // el token ya no sirve: se descarta para que la app pida iniciar sesión
@@ -59,6 +60,10 @@ app.get("/api/subscriptions", async (_req, res) => {
     console.error(err);
     res.status(502).json({ error: "Error al consultar YouTube" });
   }
+});
+
+app.post("/api/subscriptions/prune", (_req, res) => {
+  res.json({ removed: removeMissingNow() });
 });
 
 app.get("/api/lists", async (_req, res) => {

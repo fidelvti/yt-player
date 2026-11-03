@@ -18,11 +18,22 @@ export interface FeedResponse {
   stale: string[];
 }
 
+export interface ChannelRef {
+  channelId: string;
+  title: string;
+}
+
+export interface PendingChannel extends ChannelRef {
+  /** Desde cuándo se puede quitar de las listas si sigue ausente (ms desde 1970). */
+  confirmAfter: number;
+}
+
 export interface SubscriptionsResponse {
   subscriptions: Subscription[];
-  /** Canales quitados de las listas por haberte dado de baja. */
-  pruned: number;
-  pruneSkipped?: { wouldRemove: number; total: number };
+  /** Canales quitados de las listas en esta lectura por haberte dado de baja. */
+  removed: ChannelRef[];
+  /** Canales ausentes que esperan confirmación antes de quitarse (posible fallo de YouTube). */
+  pending: PendingChannel[];
 }
 
 /** Lo mínimo de un vídeo para resumirlo. */

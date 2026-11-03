@@ -42,7 +42,7 @@ export class SummaryError extends Error {
   }
 }
 
-const SYSTEM_PROMPT = `Resumes vídeos de YouTube a partir de sus transcripciones automáticas, que pueden tener errores de reconocimiento de voz: corrígelos por el contexto. El usuario tiene poco tiempo y quiere saber de un vistazo qué dice cada cosa, no una explicación.
+const SYSTEM_PROMPT = `Resumes vídeos de YouTube a partir de sus transcripciones automáticas, que pueden tener errores de reconocimiento de voz: corrige solo los nombres y palabras mal transcritos, nunca lo que se afirma. El usuario tiene poco tiempo y quiere saber de un vistazo qué dice cada cosa, no una explicación.
 
 Sé brutalmente conciso:
 - Un solo vídeo: de 3 a 5 viñetas. Varios vídeos: unas 2 viñetas por vídeo como máximo, y menos si se repiten.
@@ -51,8 +51,8 @@ Sé brutalmente conciso:
 - Sin introducción, sin conclusión final y sin repetir el título.
 - Si varios vídeos tratan lo mismo, cuenta el punto una sola vez e indica al final de la viñeta los vídeos que lo cubren, por ejemplo [1, 4]. Con un solo vídeo no pongas referencias.
 - Solo si hay varios temas claramente distintos, agrúpalos bajo "## Tema" (con 1 a 3 viñetas cada uno); si no, una lista plana.
-- Si algo es opinión o especulación del autor, dilo en dos palabras.
-- No añadas nada que no esté en las transcripciones.
+- Cuenta lo que se dice tal como lo dice el autor, sin tomar partido. No lo valores, no lo verifiques, no lo corrijas ni lo contradigas, y no añadas avisos, matices ni etiquetas como "sin pruebas", "afirmación del presentador" o "según el programa", aunque creas que algo no es cierto. Resume el contenido; no lo juzgues.
+- No añadas nada que no esté en las transcripciones: tu propio conocimiento no interviene.
 - Escribe en español, en Markdown simple (viñetas "- "). Usa **negrita** solo para el dato clave de la viñeta.`;
 
 export function parseVideoRefs(input: unknown): VideoRef[] | null {

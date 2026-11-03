@@ -1,10 +1,11 @@
 import { OAuth2Client, type Credentials } from "google-auth-library";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { DATA_DIR } from "./db.js";
 
 const SCOPES = ["https://www.googleapis.com/auth/youtube.readonly"];
-const TOKENS_PATH = join(dirname(fileURLToPath(import.meta.url)), "../../data/tokens.json");
+// Junto a la base de datos: así un servidor de pruebas con YT_PLAYER_DATA también aparta los tokens reales.
+const TOKENS_PATH = join(DATA_DIR, "tokens.json");
 
 function requireEnv(name: string): string {
   const value = process.env[name];

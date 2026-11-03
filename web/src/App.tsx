@@ -6,9 +6,24 @@ import { Player } from "./Player";
 import { SidebarList } from "./SidebarList";
 import { deleteList, renameList, sortByName } from "./listOps";
 import { Summary } from "./Summary";
-import type { ChannelList, FeedVideo, Subscription, SubscriptionsResponse, SummaryResult, VideoRef } from "./types";
+import type { ChannelList, ChannelRef, FeedVideo, Subscription, SubscriptionsResponse, SummaryResult, VideoRef } from "./types";
 
 const MANAGE = "manage";
+
+const timeFmt = new Intl.DateTimeFormat("es", { hour: "2-digit", minute: "2-digit" });
+
+/** "A, B, C y 2 más". */
+function names(channels: ChannelRef[]): string {
+  const shown = channels.slice(0, 3).map((c) => c.title);
+  const rest = channels.length - shown.length;
+  return rest > 0 ? `${shown.join(", ")} y ${rest} más` : shown.join(", ");
+}
+
+function removedText(removed: ChannelRef[]): string {
+  if (removed.length === 0) return "";
+  const what = removed.length === 1 ? "Se ha quitado 1 canal" : `Se han quitado ${removed.length} canales`;
+  return `${what} de tus listas porque ya no estás suscrito: ${names(removed)}.`;
+}
 const HISTORY = "history";
 
 type Panel = { kind: "new"; videos: VideoRef[] } | { kind: "stored"; summary: SummaryResult };
@@ -25,7 +40,7 @@ export function App() {
   const [panel, setPanel] = useState<Panel | null>(null);
   const [sessionExpired, setSessionExpired] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [subsNotice, setSubsNotice] = useState<string | null>(null);
+  const [subsNotice, setSubsNotice] = useState<{ text: string; canForce: boolean } | null>(null);
   const [refreshingSubs, setRefreshingSubs] = useState(false);
 
   useEffect(() => {
@@ -48,16 +63,17 @@ export function App() {
       const body = (await r.json()) as Partial<SubscriptionsResponse>;
       if (r.ok && Array.isArray(body.subscriptions)) {
         setSubs(body.subscriptions);
-        if (body.pruneSkipped) {
-          const { wouldRemove, total } = body.pruneSkipped;
-          setSubsNotice(
-            `No se han quitado ${wouldRemove} de ${total} canales de tus listas aunque no aparecen en tus suscripciones: son demasiados de golpe y puede ser un fallo de YouTube. Prueba más tarde con "Actualizar suscripciones".`,
-          );
-        } else if (body.pruned) {
-          setSubsNotice(
-            `Se ${body.pruned === 1 ? "ha quitado 1 canal" : `han quitado ${body.pruned} canales`} de tus listas porque ya no estás suscrito.`,
+        const removed = body.removed ?? [];
+        const pending = body.pending ?? [];
+        const parts: string[] = [];
+        if (removed.length > 0) parts.push(removedText(removed));
+        if (pending.length > 0) {
+          const from = Math.min(...pending.map((p) => p.confirmAfter));
+          parts.push(
+            `Detectada la baja de ${names(pending)}. Se quitarán de tus listas si siguen sin aparecer en una actualización posterior a las ${timeFmt.format(from)}, por si fuera un fallo de YouTube.`,
           );
         }
+        if (parts.length > 0) setSubsNotice({ text: parts.join(" "), canForce: pending.length > 0 });
       }
     } catch {
       // sin conexión: se siguen usando las listas guardadas
@@ -83,6 +99,14 @@ export function App() {
     // loadSubscriptions solo usa setters estables
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loggedIn]);
+
+  /** Quita ya de las listas los canales pendientes, sin esperar la confirmación. */
+  async function removeNow() {
+    const r = await fetch("/api/subscriptions/prune", { method: "POST" });
+    const { removed } = (await r.json()) as { removed: ChannelRef[] };
+    setLists((await fetch("/api/lists").then((x) => x.json())) as ChannelList[]);
+    setSubsNotice(removed.length > 0 ? { text: removedText(removed), canForce: false } : null);
+  }
 
   async function saveLists(next: ChannelList[]) {
     setLists(next);
@@ -204,7 +228,12 @@ export function App() {
       <main>
         {subsNotice && (
           <p className="banner">
-            <span>{subsNotice}</span>
+            <span>{subsNotice.text}</span>
+            {subsNotice.canForce && (
+              <button className="btn" onClick={() => void removeNow()}>
+                Quitar ahora
+              </button>
+            )}
             <button aria-label="Cerrar aviso" onClick={() => setSubsNotice(null)}>×</button>
           </p>
         )}

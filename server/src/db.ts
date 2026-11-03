@@ -43,6 +43,16 @@ db.exec(`
     result_json TEXT NOT NULL
   );
 
+  -- Última lectura conocida de tus suscripciones. missing_since marca desde cuándo falta un canal
+  -- en lecturas consecutivas; sirve para distinguir una baja real de un fallo puntual de YouTube.
+  CREATE TABLE IF NOT EXISTS subscription_snapshot (
+    channel_id    TEXT PRIMARY KEY,
+    title         TEXT NOT NULL,
+    first_seen    INTEGER NOT NULL,
+    last_seen     INTEGER NOT NULL,
+    missing_since INTEGER
+  );
+
   -- Caché de transcripciones (se descargan una sola vez por vídeo).
   CREATE TABLE IF NOT EXISTS transcripts (
     video_id   TEXT PRIMARY KEY,

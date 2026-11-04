@@ -92,11 +92,16 @@ Para empezar de cero basta con borrar `data/` (volverás a iniciar sesión). La 
 
 - **Cerrar sesión** (abajo en la barra lateral) borra `data/tokens.json`. No revoca el permiso en Google; para eso usa https://myaccount.google.com/permissions.
 - Si el acceso caduca, la app lo detecta, descarta el token y muestra *"Tu sesión de Google ha caducado"* con el botón para entrar de nuevo.
-- Mientras la app de Google siga en modo *Prueba*, el acceso caduca a los 7 días.
+- La app de Google está **en producción** (sin verificar). Con eso el acceso no debería caducar a los 7 días, que es lo que pasa en modo *Prueba*. Al ser una app sin verificar, Google muestra el aviso de "app no verificada" al iniciar sesión; se puede continuar.
 
 ## Sitio público (`docs/`)
 
-`docs/` se publica con GitHub Pages en https://fidelvti.github.io/yt-player/ y contiene la página principal y la [política de privacidad](https://fidelvti.github.io/yt-player/privacy.html) que exige Google para publicar la app OAuth. Incluye el archivo de verificación de Search Console; no lo borres.
+La ficha de la app en Google (pantalla de consentimiento) enlaza a una página principal y a una política de privacidad, que deben seguir públicas. Existen dos copias:
+
+- `docs/` se publica con GitHub Pages en https://fidelvti.github.io/yt-player/.
+- El repositorio [fidelvti/fidelvti.github.io](https://github.com/fidelvti/fidelvti.github.io) las sirve desde la raíz, en https://fidelvti.github.io/ y https://fidelvti.github.io/privacy.html.
+
+Ambas incluyen el archivo de verificación de Search Console; no lo borres. La verificación de la *marca* (nombre y logo) sigue fallando porque `github.io` es un dominio compartido y Google no lo da por tuyo; no impide el funcionamiento de la app y solo afecta a cómo se ve la pantalla de permisos.
 
 ## Cosas a tener en cuenta
 
@@ -115,7 +120,7 @@ Para empezar de cero basta con borrar `data/` (volverás a iniciar sesión). La 
 | Síntoma | Causa y solución |
 |---|---|
 | `redirect_uri_mismatch` al iniciar sesión | El URI del cliente OAuth no es exactamente `http://localhost:3000/auth/callback` |
-| Hay que volver a iniciar sesión cada semana | La app de Google está en modo *Prueba*, que caduca el acceso a los 7 días. Pásala a *En producción*, lo que exige tener verificados los datos de la ficha (Branding), ver *Sitio público* |
+| Hay que volver a iniciar sesión cada semana | Es lo que ocurre si la app de Google está en modo *Prueba* (acceso de 7 días). Debería estar *En producción* (Google Auth Platform → Público). Si ya lo está y sigue pasando, el acceso guardado es antiguo: cierra sesión y entra de nuevo una vez |
 | Un canal no aparece en el feed y sale un aviso con su nombre | YouTube no respondió tras varios intentos; pulsa *Actualizar*. Los detalles quedan en la consola del servidor |
 | Un canal sigue en una lista aunque me di de baja | Si eran muchas bajas a la vez, esperan 30 minutos de confirmación: recarga pasado ese tiempo o pulsa *Quitar ahora* en el aviso |
 | Aviso de "app no verificada" | Es esperado en una app personal; se puede continuar |

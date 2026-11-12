@@ -3,6 +3,9 @@ import type { ChannelList } from "./types";
 // Orden alfabético en español: sin distinguir mayúsculas ni tildes, y con los números por su valor.
 const byName = new Intl.Collator("es", { sensitivity: "base", numeric: true });
 
+/** Compara dos nombres alfabéticamente (español, sin distinguir mayúsculas ni tildes). */
+export const compareNames = (a: string, b: string): number => byName.compare(a, b);
+
 /** Copia de las listas ordenada alfabéticamente por nombre (no altera el orden guardado). */
 export function sortByName(lists: ChannelList[]): ChannelList[] {
   return [...lists].sort((a, b) => byName.compare(a.name, b.name));

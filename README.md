@@ -6,7 +6,8 @@ Reproductor de YouTube personal, sencillo y a medida. Sin buscador, sin likes ni
 
 - **Login con tu cuenta de Google** y lectura de tus suscripciones (solo lectura).
 - **Listas de canales propias**: agrupa tus suscripciones (p. ej. 70 canales en 7 listas). Un canal solo puede estar en una lista. Las listas se renombran y borran con los iconos de la barra lateral; borrar una lista no pierde sus canales, solo vuelven a quedar *sin lista*.
-- **Gestionar listas** con filtro de canales sin lista y barra de progreso. Si te das de baja de un canal en YouTube, se quita de tus listas (ver *Bajas de suscripción*).
+- **Gestionar listas** con filtro de canales sin lista y barra de progreso. Si te das de baja de un canal en YouTube, se quita de tus listas y pasa al *Catálogo* (ver *Bajas de suscripción*).
+- **Catálogo**: canales que conoces pero a los que no estás suscrito (los que dejas de seguir y los que añadas tú pegando una URL o un `@handle`; admite varios a la vez). Cada uno tiene un enlace para abrirlo en YouTube y suscribirte a mano; la app nunca se suscribe ni se da de baja por ti. Al suscribirte, desaparece del catálogo en la siguiente actualización y, si venía de una lista, **vuelve a ella**.
 - **Feed por lista** con los vídeos recientes de sus canales (vídeos y directos, sin shorts) y botón para actualizarlo.
 - **Reproductor** integrado con velocidad ajustable (1x a 2x, la última se recuerda). Con Premium en el navegador no muestra anuncios.
 - **Vídeos vistos**: se marcan al empezar a reproducirse, se atenúan en el feed y caducan a los 7 días. Pulsando la etiqueta *✓ Visto* se quita la marca.
@@ -69,7 +70,8 @@ server/src/
   feed.ts        feed por canal: API de YouTube y, si falla, RSS; caché de 5 min
   uploads.ts     vídeos de un canal desde sus listas de subidas (UULF + UULV, sin shorts)
   lists.ts       listas de canales
-  snapshot.ts    histórico de suscripciones y detección de bajas
+  snapshot.ts    histórico de suscripciones, detección de bajas y paso al catálogo
+  catalog.ts     catálogo de canales no suscritos
   watched.ts     vídeos vistos (caducan a los 7 días)
   transcripts.ts transcripciones con yt-dlp, con caché
   summarize.ts   resumen con Claude, historial y gasto
@@ -83,7 +85,7 @@ docs/            sitio público (GitHub Pages): página principal y política de
 
 Nada de esto se sube a git:
 
-- `yt-player.db`: SQLite con listas, vistos, transcripciones (30 días), resúmenes (30 días), gasto y el histórico de suscripciones.
+- `yt-player.db`: SQLite con listas, vistos, transcripciones (30 días), resúmenes (30 días), gasto, el histórico de suscripciones y `catalog_channels` (el catálogo: canales que conoces pero a los que no estás suscrito).
 - `tokens.json`: tokens de acceso a tu cuenta de Google. Trátalo como una contraseña. Si usas `YT_PLAYER_DATA`, tanto la base de datos como los tokens se leen de esa otra carpeta.
 
 Para empezar de cero basta con borrar `data/` (volverás a iniciar sesión). La variable opcional `YT_PLAYER_DATA` apunta a otra carpeta de datos, útil para probar sin tocar las listas reales.
@@ -113,7 +115,8 @@ Ambas incluyen el archivo de verificación de Search Console; no lo borres. La v
 - **Bajas de suscripción**: al cargar la app o pulsar *Actualizar suscripciones* se compara tu lista de suscripciones con la lectura anterior (guardada en SQLite).
   - Pocas bajas (hasta el 20 % de tus suscripciones, mínimo 5): el canal se quita de sus listas al momento y el aviso dice cuáles.
   - Muchas a la vez: puede ser un fallo de YouTube, así que no se quita nada hasta que los canales sigan ausentes en una lectura posterior, **30 minutos o más** después de la primera. Si reaparecen entre medias, la cuenta empieza de nuevo. El aviso lista los canales, indica a partir de qué hora y ofrece **Quitar ahora** para no esperar.
-  - Una lectura vacía se ignora. Un canal dado de baja y quitado que vuelvas a seguir reaparece *sin lista*.
+  - Un canal dado de baja (esté o no en una lista) pasa al *Catálogo*, y sale de su lista si la tenía. La regla de los 30 minutos y el botón *Quitar ahora* valen igual para el catálogo.
+  - Una lectura vacía se ignora. Al darse de baja se recuerda la lista del canal, y al volver a suscribirte vuelve a ella (al final) si la lista sigue existiendo; si no, queda *sin lista*. Un fallo puntual de YouTube que quite un canal de una lista se repara así solo en la lectura siguiente.
 
 ## Problemas frecuentes
 

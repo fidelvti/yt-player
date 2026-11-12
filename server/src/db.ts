@@ -53,6 +53,17 @@ db.exec(`
     missing_since INTEGER
   );
 
+  -- Catálogo: canales conocidos a los que NO estoy suscrito. source: 'baja' (me di de baja y la app
+  -- lo detectó) o 'import' (añadido a mano o importado de una lista). Al volver a suscribirme se quita.
+  CREATE TABLE IF NOT EXISTS catalog_channels (
+    channel_id TEXT PRIMARY KEY,
+    title      TEXT NOT NULL,
+    handle     TEXT,
+    added_at   INTEGER NOT NULL,
+    source     TEXT NOT NULL DEFAULT 'import',
+    list_id    TEXT   -- lista en la que estaba al darme de baja; al volver a suscribirme vuelve a ella
+  );
+
   -- Caché de transcripciones (se descargan una sola vez por vídeo).
   CREATE TABLE IF NOT EXISTS transcripts (
     video_id   TEXT PRIMARY KEY,
@@ -70,6 +81,15 @@ db.exec(`
     cost_usd      REAL NOT NULL
   );
 `);
+
+// La tabla del catálogo se creó antes sin las columnas source y list_id: se añaden a las bases de datos existentes.
+const catalogColumns = db.prepare("PRAGMA table_info(catalog_channels)").all() as unknown as { name: string }[];
+if (!catalogColumns.some((c) => c.name === "source")) {
+  db.exec("ALTER TABLE catalog_channels ADD COLUMN source TEXT NOT NULL DEFAULT 'import'");
+}
+if (!catalogColumns.some((c) => c.name === "list_id")) {
+  db.exec("ALTER TABLE catalog_channels ADD COLUMN list_id TEXT");
+}
 
 /** Ejecuta fn dentro de una transacción; revierte si lanza. */
 export function transaction<T>(fn: () => T): T {

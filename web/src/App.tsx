@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Catalog } from "./Catalog";
 import { Feed } from "./Feed";
 import { History } from "./History";
 import { Manage } from "./Manage";
@@ -6,9 +7,20 @@ import { Player } from "./Player";
 import { SidebarList } from "./SidebarList";
 import { deleteList, renameList, sortByName } from "./listOps";
 import { Summary } from "./Summary";
-import type { ChannelList, ChannelRef, FeedVideo, Subscription, SubscriptionsResponse, SummaryResult, VideoRef } from "./types";
+import type {
+  AddResult,
+  CatalogChannel,
+  ChannelList,
+  ChannelRef,
+  FeedVideo,
+  Subscription,
+  SubscriptionsResponse,
+  SummaryResult,
+  VideoRef,
+} from "./types";
 
 const MANAGE = "manage";
+const CATALOG = "catalog";
 
 const timeFmt = new Intl.DateTimeFormat("es", { hour: "2-digit", minute: "2-digit" });
 
@@ -19,10 +31,21 @@ function names(channels: ChannelRef[]): string {
   return rest > 0 ? `${shown.join(", ")} y ${rest} más` : shown.join(", ");
 }
 
-function removedText(removed: ChannelRef[]): string {
-  if (removed.length === 0) return "";
-  const what = removed.length === 1 ? "Se ha quitado 1 canal" : `Se han quitado ${removed.length} canales`;
-  return `${what} de tus listas porque ya no estás suscrito: ${names(removed)}.`;
+/** Aviso de canales a los que te has vuelto a suscribir y que recuperan su lista. */
+function restoredText(restored: (ChannelRef & { listName: string })[]): string {
+  if (restored.length === 0) return "";
+  if (restored.length === 1) return `Te has vuelto a suscribir a «${restored[0].title}»: ha vuelto a tu lista «${restored[0].listName}».`;
+  return `Te has vuelto a suscribir a ${names(restored)}: han vuelto a sus listas.`;
+}
+
+/** Aviso de bajas confirmadas: pasan al catálogo y, si estaban en alguna lista, salen de ella. */
+function bajasText(catalogued: ChannelRef[], removed: ChannelRef[]): string {
+  if (catalogued.length === 0) return "";
+  const one = catalogued.length === 1;
+  const base = `Ya no estás suscrito a ${names(catalogued)}: ${one ? "se ha guardado" : "se han guardado"} en el Catálogo`;
+  if (removed.length === 0) return `${base}.`;
+  if (removed.length === catalogued.length) return `${base} y se ${one ? "ha quitado" : "han quitado"} de tus listas.`;
+  return `${base}; ${removed.length} de ellos estaban en tus listas y se han quitado.`;
 }
 const HISTORY = "history";
 
@@ -32,6 +55,7 @@ export function App() {
   const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
   const [subs, setSubs] = useState<Subscription[]>([]);
   const [lists, setLists] = useState<ChannelList[]>([]);
+  const [catalog, setCatalog] = useState<CatalogChannel[]>([]);
   const [view, setView] = useState<string>(MANAGE);
   const [playing, setPlaying] = useState<FeedVideo | null>(null);
   const [watched, setWatched] = useState<Set<string>>(new Set());
@@ -64,13 +88,16 @@ export function App() {
       if (r.ok && Array.isArray(body.subscriptions)) {
         setSubs(body.subscriptions);
         const removed = body.removed ?? [];
+        const catalogued = body.catalogued ?? [];
+        const restored = body.restored ?? [];
         const pending = body.pending ?? [];
         const parts: string[] = [];
-        if (removed.length > 0) parts.push(removedText(removed));
+        if (catalogued.length > 0) parts.push(bajasText(catalogued, removed));
+        if (restored.length > 0) parts.push(restoredText(restored));
         if (pending.length > 0) {
           const from = Math.min(...pending.map((p) => p.confirmAfter));
           parts.push(
-            `Detectada la baja de ${names(pending)}. Se quitarán de tus listas si siguen sin aparecer en una actualización posterior a las ${timeFmt.format(from)}, por si fuera un fallo de YouTube.`,
+            `Detectada la baja de ${names(pending)}. Pasarán al Catálogo y saldrán de tus listas si siguen sin aparecer en una actualización posterior a las ${timeFmt.format(from)}, por si fuera un fallo de YouTube.`,
           );
         }
         if (parts.length > 0) setSubsNotice({ text: parts.join(" "), canForce: pending.length > 0 });
@@ -82,6 +109,7 @@ export function App() {
     }
     const saved = (await fetch("/api/lists").then((r) => r.json())) as ChannelList[];
     setLists(saved);
+    setCatalog((await fetch("/api/catalog").then((r) => r.json())) as CatalogChannel[]);
     return saved;
   }
 
@@ -100,12 +128,36 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loggedIn]);
 
-  /** Quita ya de las listas los canales pendientes, sin esperar la confirmación. */
+  /** Confirma ya las bajas pendientes (catálogo y listas), sin esperar los 30 minutos. */
   async function removeNow() {
     const r = await fetch("/api/subscriptions/prune", { method: "POST" });
-    const { removed } = (await r.json()) as { removed: ChannelRef[] };
+    const { removed, catalogued } = (await r.json()) as { removed: ChannelRef[]; catalogued: ChannelRef[] };
     setLists((await fetch("/api/lists").then((x) => x.json())) as ChannelList[]);
-    setSubsNotice(removed.length > 0 ? { text: removedText(removed), canForce: false } : null);
+    setCatalog((await fetch("/api/catalog").then((x) => x.json())) as CatalogChannel[]);
+    setSubsNotice(catalogued.length > 0 ? { text: bajasText(catalogued, removed), canForce: false } : null);
+  }
+
+  /** Añade al catálogo los canales pegados (URL o @handle). Lanza un Error con un mensaje apto para mostrar. */
+  async function addToCatalog(text: string): Promise<AddResult[]> {
+    const r = await fetch("/api/catalog", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+    if (r.status === 401) {
+      setSessionExpired(true);
+      setLoggedIn(false);
+      throw new Error("Tu sesión de Google ha caducado");
+    }
+    const body = (await r.json()) as { results?: AddResult[]; error?: string };
+    if (!r.ok || !body.results) throw new Error(body.error ?? "No se pudo añadir");
+    setCatalog((await fetch("/api/catalog").then((x) => x.json())) as CatalogChannel[]);
+    return body.results;
+  }
+
+  async function removeFromCatalog(channelId: string) {
+    setCatalog((prev) => prev.filter((c) => c.channelId !== channelId));
+    await fetch(`/api/catalog/${channelId}`, { method: "DELETE" });
   }
 
   async function saveLists(next: ChannelList[]) {
@@ -166,6 +218,7 @@ export function App() {
     setSessionExpired(false);
     setSubs([]);
     setLists([]);
+    setCatalog([]);
     setSubsNotice(null);
     setSelected(new Map());
     setPlaying(null);
@@ -215,6 +268,9 @@ export function App() {
           />
         ))}
         <div className="spacer" />
+        <button className={`item ${view === CATALOG ? "active" : ""}`} onClick={() => changeView(CATALOG)}>
+          Catálogo <span className="count">{catalog.length}</span>
+        </button>
         <button className={`item ${view === HISTORY ? "active" : ""}`} onClick={() => changeView(HISTORY)}>
           Resúmenes <span className="count">{summaries.length}</span>
         </button>
@@ -237,7 +293,15 @@ export function App() {
             <button aria-label="Cerrar aviso" onClick={() => setSubsNotice(null)}>×</button>
           </p>
         )}
-        {view === HISTORY ? (
+        {view === CATALOG ? (
+          <Catalog
+            catalog={catalog}
+            onRefresh={loadSubscriptions}
+            refreshing={refreshingSubs}
+            onRemove={removeFromCatalog}
+            onAdd={addToCatalog}
+          />
+        ) : view === HISTORY ? (
           <History summaries={summaries} onOpen={openSummary} />
         ) : view === MANAGE || !currentList ? (
           <Manage subs={subs} lists={lists} onChange={saveLists} onRefresh={loadSubscriptions} refreshing={refreshingSubs} />

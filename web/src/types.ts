@@ -28,8 +28,31 @@ export interface PendingChannel extends ChannelRef {
   confirmAfter: number;
 }
 
+export interface CatalogChannel {
+  channelId: string;
+  title: string;
+  handle: string | null;
+  addedAt: number;
+  /** 'baja': te diste de baja y la app lo detectó; 'import': añadido a mano o importado. */
+  source: "baja" | "import";
+  /** Lista a la que volverá si te suscribes de nuevo (null si no estaba en ninguna o ya no existe). */
+  listName: string | null;
+}
+
+export type AddStatus = "added" | "in_catalog" | "subscribed" | "not_found" | "unsupported" | "error";
+
+export interface AddResult {
+  input: string;
+  status: AddStatus;
+  channel?: { channelId: string; title: string; handle: string | null };
+}
+
 export interface SubscriptionsResponse {
   subscriptions: Subscription[];
+  /** Canales que han pasado al catálogo en esta lectura por haberte dado de baja. */
+  catalogued: ChannelRef[];
+  /** Canales a los que te has vuelto a suscribir y que han vuelto a su lista. */
+  restored: (ChannelRef & { listName: string })[];
   /** Canales quitados de las listas en esta lectura por haberte dado de baja. */
   removed: ChannelRef[];
   /** Canales ausentes que esperan confirmación antes de quitarse (posible fallo de YouTube). */

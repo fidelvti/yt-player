@@ -1,6 +1,7 @@
 import express from "express";
 import { authUrl, authedClient, clearTokens, createClient, handleCallback, isAuthExpired } from "./auth.js";
 import { fetchFeed } from "./feed.js";
+import { addToCatalog, isChannelId, listCatalog, removeFromCatalog } from "./catalog.js";
 import { loadLists, parseLists, saveLists } from "./lists.js";
 import { reconcileSubscriptions, removeMissingNow } from "./snapshot.js";
 import { listSummaries, monthUsage, parseVideoRefs, SummaryError, summarizedMap, summarize } from "./summarize.js";
@@ -49,8 +50,10 @@ app.get("/api/subscriptions", async (_req, res) => {
   try {
     const subscriptions = await listSubscriptions(client);
     // Las bajas de YouTube se reflejan en las listas (ver snapshot.ts para cuándo se aplican).
-    const { removed, pending } = reconcileSubscriptions(subscriptions.map((s) => ({ channelId: s.channelId, title: s.title })));
-    res.json({ subscriptions, removed, pending });
+    const { removed, catalogued, restored, pending } = reconcileSubscriptions(
+      subscriptions.map((s) => ({ channelId: s.channelId, title: s.title })),
+    );
+    res.json({ subscriptions, removed, catalogued, restored, pending });
   } catch (err) {
     if (isAuthExpired(err)) {
       await clearTokens(); // el token ya no sirve: se descarta para que la app pida iniciar sesión
@@ -63,7 +66,44 @@ app.get("/api/subscriptions", async (_req, res) => {
 });
 
 app.post("/api/subscriptions/prune", (_req, res) => {
-  res.json({ removed: removeMissingNow() });
+  res.json(removeMissingNow());
+});
+
+app.get("/api/catalog", (_req, res) => {
+  res.json(listCatalog());
+});
+
+app.post("/api/catalog", express.json(), async (req, res) => {
+  const text = req.body?.text;
+  if (typeof text !== "string" || !text.trim() || text.length > 5000) {
+    res.status(400).json({ error: "Pega una o varias URLs o @handles de canales" });
+    return;
+  }
+  const client = await authedClient();
+  if (!client) {
+    res.status(401).json({ error: "No has iniciado sesión" });
+    return;
+  }
+  try {
+    res.json({ results: await addToCatalog(client, text) });
+  } catch (err) {
+    if (isAuthExpired(err)) {
+      await clearTokens();
+      res.status(401).json({ error: "session_expired" });
+      return;
+    }
+    console.error(err);
+    res.status(502).json({ error: "Error al consultar YouTube" });
+  }
+});
+
+app.delete("/api/catalog/:channelId", (req, res) => {
+  if (!isChannelId(req.params.channelId)) {
+    res.status(400).json({ error: "channelId no válido" });
+    return;
+  }
+  removeFromCatalog(req.params.channelId);
+  res.status(204).end();
 });
 
 app.get("/api/lists", async (_req, res) => {

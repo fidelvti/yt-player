@@ -1,6 +1,4 @@
-import { existsSync, readFileSync, renameSync } from "node:fs";
-import { join } from "node:path";
-import { DATA_DIR, db, transaction } from "./db.js";
+import { db, transaction } from "./db.js";
 
 export interface ChannelList {
   id: string;
@@ -65,22 +63,3 @@ function writeLists(lists: ChannelList[]): void {
 export async function saveLists(lists: ChannelList[]): Promise<void> {
   writeLists(lists);
 }
-
-/** Importa data/lists.json (formato anterior) la primera vez y lo aparta para no reimportarlo. */
-function importLegacyJson(): void {
-  const legacy = join(DATA_DIR, "lists.json");
-  if (!existsSync(legacy)) return;
-  const existing = db.prepare("SELECT COUNT(*) AS n FROM lists").get() as { n: number };
-  if (existing.n > 0) return;
-
-  const lists = parseLists(JSON.parse(readFileSync(legacy, "utf8")));
-  if (!lists) {
-    console.error("data/lists.json no es válido; no se importa");
-    return;
-  }
-  writeLists(lists);
-  renameSync(legacy, join(DATA_DIR, "lists.json.migrado"));
-  console.log(`Importadas ${lists.length} listas de lists.json a SQLite`);
-}
-
-importLegacyJson();

@@ -48,7 +48,6 @@ Crea una clave en [console.anthropic.com](https://console.anthropic.com), carga 
 | Acción | Comando |
 |---|---|
 | Arrancar backend y frontend | `npm run dev` (desde la raíz) |
-| Arrancar con un doble clic | `yt-player.command` (arranca y abre el navegador) |
 | Parar | `Ctrl+C` en esa terminal, o cerrar la ventana si lo abriste con el doble clic |
 | Comprobar tipos | `npm run typecheck` |
 

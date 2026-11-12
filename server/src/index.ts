@@ -3,6 +3,7 @@ import { authUrl, authedClient, clearTokens, createClient, handleCallback, isAut
 import { fetchFeed } from "./feed.js";
 import { addToCatalog, addToList, isChannelId, listCatalog, removeFromCatalog, type AddResult } from "./catalog.js";
 import type { OAuth2Client } from "google-auth-library";
+import { fillMissingHandles, subscribedHandles } from "./handles.js";
 import { loadLists, parseLists, saveLists } from "./lists.js";
 import { reconcileSubscriptions, removeMissingNow } from "./snapshot.js";
 import { listSummaries, monthUsage, parseVideoRefs, SummaryError, summarizedMap, summarize } from "./summarize.js";
@@ -54,7 +55,20 @@ app.get("/api/subscriptions", async (_req, res) => {
     const { removed, catalogued, restored, pending } = reconcileSubscriptions(
       subscriptions.map((s) => ({ channelId: s.channelId, title: s.title, thumbnail: s.thumbnail || null })),
     );
-    res.json({ subscriptions, removed, catalogued, restored, pending });
+    // Las suscripciones no traen el @handle: se completa aparte (solo para los canales que aún no lo tienen).
+    try {
+      await fillMissingHandles(client);
+    } catch (err) {
+      console.warn("No se pudieron completar los handles:", (err as Error).message);
+    }
+    const handles = subscribedHandles();
+    res.json({
+      subscriptions: subscriptions.map((s) => ({ ...s, handle: handles.get(s.channelId) ?? null })),
+      removed,
+      catalogued,
+      restored,
+      pending,
+    });
   } catch (err) {
     if (isAuthExpired(err)) {
       await clearTokens(); // el token ya no sirve: se descarta para que la app pida iniciar sesión

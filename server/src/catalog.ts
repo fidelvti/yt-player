@@ -37,7 +37,7 @@ export function listCatalog(): CatalogChannel[] {
   return rows.map((r) => ({
     channelId: r.channel_id,
     title: r.title,
-    handle: r.handle,
+    handle: r.handle || null, // "" = consultado y sin handle
     addedAt: r.added_at,
     source: r.source === "baja" ? "baja" : "import",
     listName: r.list_name,

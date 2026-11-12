@@ -51,7 +51,8 @@ db.exec(`
     first_seen    INTEGER NOT NULL,
     last_seen     INTEGER NOT NULL,
     missing_since INTEGER,
-    thumbnail     TEXT
+    thumbnail     TEXT,
+    handle        TEXT   -- @handle; "" = consultado y sin handle
   );
 
   -- Catálogo: canales conocidos a los que NO estoy suscrito. source: 'baja' (me di de baja y la app
@@ -98,6 +99,9 @@ if (!catalogColumns.some((c) => c.name === "thumbnail")) {
 const snapshotColumns = db.prepare("PRAGMA table_info(subscription_snapshot)").all() as unknown as { name: string }[];
 if (!snapshotColumns.some((c) => c.name === "thumbnail")) {
   db.exec("ALTER TABLE subscription_snapshot ADD COLUMN thumbnail TEXT");
+}
+if (!snapshotColumns.some((c) => c.name === "handle")) {
+  db.exec("ALTER TABLE subscription_snapshot ADD COLUMN handle TEXT");
 }
 
 /** Ejecuta fn dentro de una transacción; revierte si lanza. */

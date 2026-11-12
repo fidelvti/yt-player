@@ -72,6 +72,7 @@ server/src/
   lists.ts       listas de canales
   snapshot.ts    histórico de suscripciones, detección de bajas y paso al catálogo
   catalog.ts     catálogo de canales no suscritos
+  handles.ts     completa el @handle de los canales (en lotes de 50, solo los que faltan)
   watched.ts     vídeos vistos (caducan a los 7 días)
   transcripts.ts transcripciones con yt-dlp, con caché
   summarize.ts   resumen con Claude, historial y gasto

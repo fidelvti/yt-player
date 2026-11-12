@@ -2,6 +2,8 @@ export interface Subscription {
   channelId: string;
   title: string;
   thumbnail: string;
+  /** @handle del canal, si se conoce. */
+  handle?: string | null;
 }
 
 export interface ChannelList {

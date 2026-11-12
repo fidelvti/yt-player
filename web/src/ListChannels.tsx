@@ -18,7 +18,12 @@ interface Props {
 export function ListChannels({ list, subs, pending, onAdd, onRemoveFromList, onRemoveFromCatalog }: Props) {
   const byId = new Map(subs.map((s) => [s.channelId, s]));
   const members = list.channelIds
-    .map((id) => ({ id, title: byId.get(id)?.title ?? id, thumbnail: byId.get(id)?.thumbnail ?? null }))
+    .map((id) => ({
+      id,
+      title: byId.get(id)?.title ?? id,
+      thumbnail: byId.get(id)?.thumbnail ?? null,
+      handle: byId.get(id)?.handle ?? null,
+    }))
     .sort((a, b) => compareNames(a.title, b.title));
   const waiting = [...pending].sort((a, b) => compareNames(a.title, b.title));
 
@@ -49,7 +54,7 @@ export function ListChannels({ list, subs, pending, onAdd, onRemoveFromList, onR
               key={m.id}
               channelId={m.id}
               title={m.title}
-              meta="Suscrito"
+              meta={[m.handle, "Suscrito"].filter(Boolean).join(" · ")}
               thumbnail={m.thumbnail}
               removeLabel="Quitar de la lista"
               onRemove={() => onRemoveFromList(m.id)}

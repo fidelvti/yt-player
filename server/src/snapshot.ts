@@ -11,6 +11,8 @@ const FORGET_AFTER_MS = 90 * 24 * 60 * 60 * 1000;
 export interface ChannelRef {
   channelId: string;
   title: string;
+  /** Foto del canal, si se conoce. */
+  thumbnail?: string | null;
 }
 
 export interface PendingChannel extends ChannelRef {
@@ -38,6 +40,7 @@ interface Row {
   channel_id: string;
   title: string;
   missing_since: number | null;
+  thumbnail: string | null;
 }
 
 /** channel_id -> id de la lista en la que está. */
@@ -47,7 +50,7 @@ function channelsInLists(): Map<string, string> {
 }
 
 const INSERT_BAJA =
-  "INSERT OR IGNORE INTO catalog_channels (channel_id, title, handle, added_at, source, list_id) VALUES (?, ?, NULL, ?, 'baja', ?)";
+  "INSERT OR IGNORE INTO catalog_channels (channel_id, title, handle, added_at, source, list_id, thumbnail) VALUES (?, ?, NULL, ?, 'baja', ?, ?)";
 
 /**
  * Compara las suscripciones actuales con la última lectura. Los canales dados de baja pasan al catálogo
@@ -66,7 +69,7 @@ export function reconcileSubscriptions(current: ChannelRef[], now = Date.now()):
 
   return transaction(() => {
     const presentIds = new Set(current.map((c) => c.channelId));
-    const previous = db.prepare("SELECT channel_id, title, missing_since FROM subscription_snapshot").all() as unknown as Row[];
+    const previous = db.prepare("SELECT channel_id, title, missing_since, thumbnail FROM subscription_snapshot").all() as unknown as Row[];
     const inLists = channelsInLists();
 
     const known = new Set(previous.map((r) => r.channel_id));
@@ -75,18 +78,19 @@ export function reconcileSubscriptions(current: ChannelRef[], now = Date.now()):
     // Ausentes ahora: los del histórico que no vienen, y canales en listas que nunca llegaron a estar en él.
     const absent: Row[] = previous.filter((r) => !presentIds.has(r.channel_id));
     for (const id of inLists.keys()) {
-      if (!presentIds.has(id) && !known.has(id)) absent.push({ channel_id: id, title: id, missing_since: null });
+      if (!presentIds.has(id) && !known.has(id)) absent.push({ channel_id: id, title: id, missing_since: null, thumbnail: null });
     }
 
     const newlyAbsent = absent.filter((r) => r.missing_since === null).length;
     const mass = newlyAbsent > Math.max(MASS_MIN, Math.ceil(knownActive * MASS_FRACTION));
 
     const upsert = db.prepare(
-      `INSERT INTO subscription_snapshot (channel_id, title, first_seen, last_seen, missing_since)
-       VALUES (?, ?, ?, ?, NULL)
-       ON CONFLICT(channel_id) DO UPDATE SET title = excluded.title, last_seen = excluded.last_seen, missing_since = NULL`,
+      `INSERT INTO subscription_snapshot (channel_id, title, first_seen, last_seen, missing_since, thumbnail)
+       VALUES (?, ?, ?, ?, NULL, ?)
+       ON CONFLICT(channel_id) DO UPDATE SET title = excluded.title, last_seen = excluded.last_seen, missing_since = NULL,
+         thumbnail = COALESCE(excluded.thumbnail, thumbnail)`,
     );
-    for (const c of current) upsert.run(c.channelId, c.title, now, now);
+    for (const c of current) upsert.run(c.channelId, c.title, now, now, c.thumbnail ?? null);
 
     // Un canal al que estás suscrito no puede estar en el catálogo: sale de él y, si venía de una lista que
     // sigue existiendo, vuelve a ella (al final).
@@ -131,7 +135,7 @@ export function reconcileSubscriptions(current: ChannelRef[], now = Date.now()):
 
       if ((isNew && !mass) || confirmed) {
         // Baja confirmada: pasa al catálogo (esté o no en una lista, que se recuerda) y sale de su lista.
-        if (Number(toCatalog.run(row.channel_id, row.title, now, listId).changes) > 0) catalogued.push(ref);
+        if (Number(toCatalog.run(row.channel_id, row.title, now, listId, row.thumbnail).changes) > 0) catalogued.push(ref);
         if (listId) {
           dropFromLists.run(row.channel_id);
           removed.push(ref);
@@ -152,8 +156,8 @@ export function reconcileSubscriptions(current: ChannelRef[], now = Date.now()):
 export function removeMissingNow(): { removed: ChannelRef[]; catalogued: ChannelRef[] } {
   return transaction(() => {
     const missing = db
-      .prepare("SELECT channel_id, title FROM subscription_snapshot WHERE missing_since IS NOT NULL")
-      .all() as { channel_id: string; title: string }[];
+      .prepare("SELECT channel_id, title, thumbnail FROM subscription_snapshot WHERE missing_since IS NOT NULL")
+      .all() as { channel_id: string; title: string; thumbnail: string | null }[];
     const inLists = channelsInLists();
     const toCatalog = db.prepare(INSERT_BAJA);
     const dropFromLists = db.prepare("DELETE FROM list_channels WHERE channel_id = ?");
@@ -163,7 +167,7 @@ export function removeMissingNow(): { removed: ChannelRef[]; catalogued: Channel
     for (const r of missing) {
       const ref = { channelId: r.channel_id, title: r.title };
       const listId = inLists.get(r.channel_id) ?? null;
-      if (Number(toCatalog.run(r.channel_id, r.title, Date.now(), listId).changes) > 0) catalogued.push(ref);
+      if (Number(toCatalog.run(r.channel_id, r.title, Date.now(), listId, r.thumbnail).changes) > 0) catalogued.push(ref);
       if (listId) {
         dropFromLists.run(r.channel_id);
         removed.push(ref);

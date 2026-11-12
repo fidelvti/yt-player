@@ -108,9 +108,7 @@ export function Catalog({ catalog, onRefresh, refreshing, onRemove, onAdd }: Pro
         <ul className="subs catalog">
           {sorted.map((c) => (
             <li key={c.channelId}>
-              <span className="avatar-initial" aria-hidden="true">
-                {c.title.charAt(0).toUpperCase()}
-              </span>
+              {c.thumbnail && <img src={c.thumbnail} width={32} height={32} alt="" loading="lazy" />}
               <span className="catalog-name">
                 <strong>{c.title}</strong>
                 <small>{meta(c)}</small>
@@ -124,7 +122,7 @@ export function Catalog({ catalog, onRefresh, refreshing, onRemove, onAdd }: Pro
                 Abrir en YouTube ↗
               </a>
               {confirming === c.channelId ? (
-                <span className="confirm-inline">
+                <div className="confirm-inline">
                   <button
                     className="btn danger"
                     onClick={() => {
@@ -137,7 +135,7 @@ export function Catalog({ catalog, onRefresh, refreshing, onRemove, onAdd }: Pro
                   <button className="btn" onClick={() => setConfirming(null)}>
                     No
                   </button>
-                </span>
+                </div>
               ) : (
                 <button
                   className="icon-btn"

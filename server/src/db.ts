@@ -50,7 +50,8 @@ db.exec(`
     title         TEXT NOT NULL,
     first_seen    INTEGER NOT NULL,
     last_seen     INTEGER NOT NULL,
-    missing_since INTEGER
+    missing_since INTEGER,
+    thumbnail     TEXT
   );
 
   -- Catálogo: canales conocidos a los que NO estoy suscrito. source: 'baja' (me di de baja y la app
@@ -61,7 +62,8 @@ db.exec(`
     handle     TEXT,
     added_at   INTEGER NOT NULL,
     source     TEXT NOT NULL DEFAULT 'import',
-    list_id    TEXT   -- lista en la que estaba al darme de baja; al volver a suscribirme vuelve a ella
+    list_id    TEXT,  -- lista en la que estaba al darme de baja; al volver a suscribirme vuelve a ella
+    thumbnail  TEXT   -- foto del canal
   );
 
   -- Caché de transcripciones (se descargan una sola vez por vídeo).
@@ -82,13 +84,20 @@ db.exec(`
   );
 `);
 
-// La tabla del catálogo se creó antes sin las columnas source y list_id: se añaden a las bases de datos existentes.
+// La tabla del catálogo se creó antes sin las columnas source, list_id y thumbnail (y el histórico sin thumbnail): se añaden a las bases de datos existentes.
 const catalogColumns = db.prepare("PRAGMA table_info(catalog_channels)").all() as unknown as { name: string }[];
 if (!catalogColumns.some((c) => c.name === "source")) {
   db.exec("ALTER TABLE catalog_channels ADD COLUMN source TEXT NOT NULL DEFAULT 'import'");
 }
 if (!catalogColumns.some((c) => c.name === "list_id")) {
   db.exec("ALTER TABLE catalog_channels ADD COLUMN list_id TEXT");
+}
+if (!catalogColumns.some((c) => c.name === "thumbnail")) {
+  db.exec("ALTER TABLE catalog_channels ADD COLUMN thumbnail TEXT");
+}
+const snapshotColumns = db.prepare("PRAGMA table_info(subscription_snapshot)").all() as unknown as { name: string }[];
+if (!snapshotColumns.some((c) => c.name === "thumbnail")) {
+  db.exec("ALTER TABLE subscription_snapshot ADD COLUMN thumbnail TEXT");
 }
 
 /** Ejecuta fn dentro de una transacción; revierte si lanza. */

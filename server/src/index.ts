@@ -51,7 +51,7 @@ app.get("/api/subscriptions", async (_req, res) => {
     const subscriptions = await listSubscriptions(client);
     // Las bajas de YouTube se reflejan en las listas (ver snapshot.ts para cuándo se aplican).
     const { removed, catalogued, restored, pending } = reconcileSubscriptions(
-      subscriptions.map((s) => ({ channelId: s.channelId, title: s.title })),
+      subscriptions.map((s) => ({ channelId: s.channelId, title: s.title, thumbnail: s.thumbnail || null })),
     );
     res.json({ subscriptions, removed, catalogued, restored, pending });
   } catch (err) {

@@ -94,7 +94,7 @@ Para empezar de cero basta con borrar `data/` (volverás a iniciar sesión). La 
 
 - **Cerrar sesión** (abajo en la barra lateral) borra `data/tokens.json`. No revoca el permiso en Google; para eso usa https://myaccount.google.com/permissions.
 - Si el acceso caduca, la app lo detecta, descarta el token y muestra *"Tu sesión de Google ha caducado"* con el botón para entrar de nuevo.
-- La app de Google está **en producción** (sin verificar). Con eso el acceso no debería caducar a los 7 días, que es lo que pasa en modo *Prueba*. Al ser una app sin verificar, Google muestra el aviso de "app no verificada" al iniciar sesión; se puede continuar.
+- La app de Google está **en producción** (sin verificar). Con eso el acceso **no caduca** a los 7 días, que es lo que pasa en modo *Prueba* (comprobado: un acceso del 3/11 seguía funcionando el 12/11). Al ser una app sin verificar, Google muestra el aviso de "app no verificada" al iniciar sesión; se puede continuar.
 
 ## Sitio público (`docs/`)
 

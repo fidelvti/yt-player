@@ -37,6 +37,8 @@ export interface CatalogChannel {
   source: "baja" | "import";
   /** Lista a la que volverá si te suscribes de nuevo (null si no estaba en ninguna o ya no existe). */
   listName: string | null;
+  /** Foto del canal (null si aún no se conoce). */
+  thumbnail: string | null;
 }
 
 export type AddStatus = "added" | "in_catalog" | "subscribed" | "not_found" | "unsupported" | "error";

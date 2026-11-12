@@ -328,10 +328,6 @@ button.link { border: 0; background: none; padding: 0; color: var(--accent); tex
 .catalog-name { flex: 1; min-width: 0; display: grid; gap: 2px; }
 .catalog-name strong { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .catalog-name small { color: var(--muted); font-size: 12px; }
-.avatar-initial {
-  flex: none; width: 32px; height: 32px; display: grid; place-items: center;
-  border-radius: 50%; background: var(--surface-2); color: var(--muted); font-weight: 600; font-size: 14px;
-}
 .subs.catalog .btn { flex: none; text-decoration: none; font-size: 13px; padding: 5px 11px; }
 .btn.danger { background: var(--accent); border-color: var(--accent); color: #fff; }
 .confirm-inline { display: flex; gap: 6px; }

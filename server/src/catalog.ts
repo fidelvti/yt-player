@@ -11,12 +11,14 @@ export interface CatalogChannel {
   source: "baja" | "import";
   /** Lista a la que volverá si te suscribes de nuevo (null si no estaba en ninguna o ya no existe). */
   listName: string | null;
+  /** Foto del canal (null si aún no se conoce). */
+  thumbnail: string | null;
 }
 
 export function listCatalog(): CatalogChannel[] {
   const rows = db
     .prepare(
-      `SELECT c.channel_id, c.title, c.handle, c.added_at, c.source, l.name AS list_name
+      `SELECT c.channel_id, c.title, c.handle, c.added_at, c.source, c.thumbnail, l.name AS list_name
        FROM catalog_channels c LEFT JOIN lists l ON l.id = c.list_id
        ORDER BY c.title COLLATE NOCASE`,
     )
@@ -26,6 +28,7 @@ export function listCatalog(): CatalogChannel[] {
     handle: string | null;
     added_at: number;
     source: string;
+    thumbnail: string | null;
     list_name: string | null;
   }[];
   return rows.map((r) => ({
@@ -35,6 +38,7 @@ export function listCatalog(): CatalogChannel[] {
     addedAt: r.added_at,
     source: r.source === "baja" ? "baja" : "import",
     listName: r.list_name,
+    thumbnail: r.thumbnail,
   }));
 }
 
@@ -96,13 +100,14 @@ export function parseChannelInput(raw: string): ChannelQuery | null {
 }
 
 interface ChannelsResponse {
-  items?: { id: string; snippet: { title: string; customUrl?: string } }[];
+  items?: { id: string; snippet: { title: string; customUrl?: string; thumbnails?: { default?: { url: string } } } }[];
 }
 
 export interface ResolvedChannel {
   channelId: string;
   title: string;
   handle: string | null;
+  thumbnail: string | null;
 }
 
 /** Busca el canal en la API de YouTube (solo lectura, 1 unidad de cuota). Devuelve null si no existe. */
@@ -119,7 +124,12 @@ export async function resolveChannel(client: OAuth2Client, query: ChannelQuery):
   const item = res.data.items?.[0];
   if (!item) return null;
   const custom = item.snippet.customUrl;
-  return { channelId: item.id, title: item.snippet.title, handle: custom?.startsWith("@") ? custom : null };
+  return {
+    channelId: item.id,
+    title: item.snippet.title,
+    handle: custom?.startsWith("@") ? custom : null,
+    thumbnail: item.snippet.thumbnails?.default?.url ?? null,
+  };
 }
 
 export type AddStatus = "added" | "in_catalog" | "subscribed" | "not_found" | "unsupported" | "error";
@@ -144,8 +154,9 @@ export async function addToCatalog(client: OAuth2Client, text: string): Promise<
   const isSubscribed = db.prepare("SELECT 1 FROM subscription_snapshot WHERE channel_id = ? AND missing_since IS NULL");
   const inCatalog = db.prepare("SELECT 1 FROM catalog_channels WHERE channel_id = ?");
   const insert = db.prepare(
-    "INSERT OR IGNORE INTO catalog_channels (channel_id, title, handle, added_at, source, list_id) VALUES (?, ?, ?, ?, 'import', NULL)",
+    "INSERT OR IGNORE INTO catalog_channels (channel_id, title, handle, added_at, source, list_id, thumbnail) VALUES (?, ?, ?, ?, 'import', NULL, ?)",
   );
+  const fillThumbnail = db.prepare("UPDATE catalog_channels SET thumbnail = COALESCE(thumbnail, ?) WHERE channel_id = ?");
 
   for (const input of splitInputs(text)) {
     const query = parseChannelInput(input);
@@ -170,9 +181,12 @@ export async function addToCatalog(client: OAuth2Client, text: string): Promise<
     seen.add(channel.channelId);
 
     if (isSubscribed.get(channel.channelId)) results.push({ input, status: "subscribed", channel });
-    else if (inCatalog.get(channel.channelId)) results.push({ input, status: "in_catalog", channel });
+    else if (inCatalog.get(channel.channelId)) {
+      fillThumbnail.run(channel.thumbnail, channel.channelId); // vuelve a pasar: aprovecha para completar la foto
+      results.push({ input, status: "in_catalog", channel });
+    }
     else {
-      insert.run(channel.channelId, channel.title, channel.handle, Date.now());
+      insert.run(channel.channelId, channel.title, channel.handle, Date.now(), channel.thumbnail);
       results.push({ input, status: "added", channel });
     }
   }

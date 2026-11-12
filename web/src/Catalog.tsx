@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { AddChannels } from "./AddChannels";
+import { ChannelRow } from "./ChannelRow";
 import { compareNames } from "./listOps";
-import type { AddResult, AddStatus, CatalogChannel } from "./types";
+import type { AddResult, CatalogChannel } from "./types";
 
 interface Props {
   catalog: CatalogChannel[];
@@ -19,50 +20,8 @@ function meta(c: CatalogChannel): string {
   return [c.handle, origin, c.listName ? `volverá a «${c.listName}» al suscribirte` : null].filter(Boolean).join(" · ");
 }
 
-const LABELS: Record<AddStatus, string> = {
-  added: "Añadidos",
-  in_catalog: "Ya estaban en el catálogo",
-  subscribed: "Ya estás suscrito",
-  not_found: "No existe ese canal",
-  unsupported: "No parece la URL o el @handle de un canal",
-  error: "No se pudo consultar",
-};
-const ORDER: AddStatus[] = ["added", "in_catalog", "subscribed", "not_found", "unsupported", "error"];
-
-/** Resumen del resultado, agrupado por estado: "Añadidos: «A», «B»". */
-function summarize(results: AddResult[]): { status: AddStatus; text: string }[] {
-  return ORDER.flatMap((status) => {
-    const items = results.filter((r) => r.status === status);
-    if (items.length === 0) return [];
-    const what = items.map((r) => (r.channel ? `«${r.channel.title}»` : r.input)).join(", ");
-    return [{ status, text: `${LABELS[status]}: ${what}` }];
-  });
-}
-
 export function Catalog({ catalog, onRefresh, refreshing, onRemove, onAdd }: Props) {
-  // Quitar del catálogo es de dos pasos para evitar borrados sin querer.
-  const [confirming, setConfirming] = useState<string | null>(null);
-  const [text, setText] = useState("");
-  const [adding, setAdding] = useState(false);
-  const [outcome, setOutcome] = useState<{ status: AddStatus | "failed"; text: string }[] | null>(null);
   const sorted = [...catalog].sort((a, b) => compareNames(a.title, b.title));
-
-  async function add(e: React.FormEvent) {
-    e.preventDefault();
-    if (!text.trim()) return;
-    setAdding(true);
-    try {
-      const results = await onAdd(text);
-      setOutcome(summarize(results));
-      // Se vacía solo lo que se ha procesado bien; lo que falló se queda para corregirlo.
-      const failed = results.filter((r) => r.status === "not_found" || r.status === "unsupported" || r.status === "error");
-      setText(failed.map((r) => r.input).join("\n"));
-    } catch (err) {
-      setOutcome([{ status: "failed", text: (err as Error).message }]);
-    } finally {
-      setAdding(false);
-    }
-  }
 
   return (
     <div>
@@ -79,74 +38,26 @@ export function Catalog({ catalog, onRefresh, refreshing, onRemove, onAdd }: Pro
         </button>
       </header>
 
-      <form className="add-form" onSubmit={add}>
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          rows={2}
-          placeholder="Añadir canales: pega una URL o un @handle (varios, uno por línea)"
-          aria-label="URLs o handles de canales para añadir al catálogo"
-        />
-        <button className="btn primary" disabled={adding || !text.trim()}>
-          {adding ? "Añadiendo…" : "Añadir al catálogo"}
-        </button>
-      </form>
-
-      {outcome && (
-        <div className="add-results" role="status">
-          {outcome.map((o) => (
-            <p key={o.text} className={o.status === "added" ? "ok" : o.status === "in_catalog" || o.status === "subscribed" ? "" : "warn"}>
-              {o.text}
-            </p>
-          ))}
-        </div>
-      )}
+      <AddChannels
+        onAdd={onAdd}
+        buttonLabel="Añadir al catálogo"
+        ariaLabel="URLs o handles de canales para añadir al catálogo"
+      />
 
       {sorted.length === 0 ? (
         <p className="status">El catálogo está vacío. Aquí aparecerán los canales de los que te des de baja.</p>
       ) : (
         <ul className="subs catalog">
           {sorted.map((c) => (
-            <li key={c.channelId}>
-              {c.thumbnail && <img src={c.thumbnail} width={32} height={32} alt="" loading="lazy" />}
-              <span className="catalog-name">
-                <strong>{c.title}</strong>
-                <small>{meta(c)}</small>
-              </span>
-              <a
-                className="btn"
-                href={`https://www.youtube.com/channel/${c.channelId}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Abrir en YouTube ↗
-              </a>
-              {confirming === c.channelId ? (
-                <div className="confirm-inline">
-                  <button
-                    className="btn danger"
-                    onClick={() => {
-                      setConfirming(null);
-                      onRemove(c.channelId);
-                    }}
-                  >
-                    Quitar
-                  </button>
-                  <button className="btn" onClick={() => setConfirming(null)}>
-                    No
-                  </button>
-                </div>
-              ) : (
-                <button
-                  className="icon-btn"
-                  title="Quitar del catálogo"
-                  aria-label={`Quitar ${c.title} del catálogo`}
-                  onClick={() => setConfirming(c.channelId)}
-                >
-                  ×
-                </button>
-              )}
-            </li>
+            <ChannelRow
+              key={c.channelId}
+              channelId={c.channelId}
+              title={c.title}
+              meta={meta(c)}
+              thumbnail={c.thumbnail}
+              removeLabel="Quitar del catálogo"
+              onRemove={() => onRemove(c.channelId)}
+            />
           ))}
         </ul>
       )}

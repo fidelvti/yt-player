@@ -39,14 +39,28 @@ export interface CatalogChannel {
   listName: string | null;
   /** Foto del canal (null si aún no se conoce). */
   thumbnail: string | null;
+  /** Id de la lista a la que volverá o se unirá al suscribirte (null si no tiene). */
+  listId: string | null;
 }
 
-export type AddStatus = "added" | "in_catalog" | "subscribed" | "not_found" | "unsupported" | "error";
+export type AddStatus =
+  | "added"
+  | "in_catalog"
+  | "subscribed"
+  | "added_to_list"
+  | "in_list"
+  | "in_other_list"
+  | "pending"
+  | "not_found"
+  | "unsupported"
+  | "error";
 
 export interface AddResult {
   input: string;
   status: AddStatus;
   channel?: { channelId: string; title: string; handle: string | null };
+  /** En "in_other_list": nombre de la lista en la que ya está. */
+  listName?: string;
 }
 
 export interface SubscriptionsResponse {

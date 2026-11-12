@@ -345,3 +345,8 @@ button.link { border: 0; background: none; padding: 0; color: var(--accent); tex
 .add-results p { margin: 2px 0; color: var(--muted); }
 .add-results p.ok { color: var(--text); }
 .add-results p.warn { color: var(--accent); }
+
+/* Lista: selector Vídeos / Canales */
+.list-tabs { margin-bottom: 20px; }
+.segmented .count { margin-left: 6px; font-size: 12px; font-weight: 500; opacity: .7; }
+.section-title { margin: 30px 0 10px; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }

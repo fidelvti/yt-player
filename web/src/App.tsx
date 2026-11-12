@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Catalog } from "./Catalog";
 import { Feed } from "./Feed";
+import { ListChannels } from "./ListChannels";
 import { History } from "./History";
 import { Manage } from "./Manage";
 import { Player } from "./Player";
@@ -56,6 +57,7 @@ export function App() {
   const [subs, setSubs] = useState<Subscription[]>([]);
   const [lists, setLists] = useState<ChannelList[]>([]);
   const [catalog, setCatalog] = useState<CatalogChannel[]>([]);
+  const [listTab, setListTab] = useState<"videos" | "channels">("videos");
   const [view, setView] = useState<string>(MANAGE);
   const [playing, setPlaying] = useState<FeedVideo | null>(null);
   const [watched, setWatched] = useState<Set<string>>(new Set());
@@ -137,9 +139,9 @@ export function App() {
     setSubsNotice(catalogued.length > 0 ? { text: bajasText(catalogued, removed), canForce: false } : null);
   }
 
-  /** Añade al catálogo los canales pegados (URL o @handle). Lanza un Error con un mensaje apto para mostrar. */
-  async function addToCatalog(text: string): Promise<AddResult[]> {
-    const r = await fetch("/api/catalog", {
+  /** Alta de canales por URL o @handle (en el catálogo o en una lista). Lanza un Error con un mensaje apto para mostrar. */
+  async function postAdd(url: string, text: string): Promise<AddResult[]> {
+    const r = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text }),
@@ -151,8 +153,18 @@ export function App() {
     }
     const body = (await r.json()) as { results?: AddResult[]; error?: string };
     if (!r.ok || !body.results) throw new Error(body.error ?? "No se pudo añadir");
+    // El alta puede cambiar las listas (canal que entra en una) y el catálogo (canal pendiente).
+    setLists((await fetch("/api/lists").then((x) => x.json())) as ChannelList[]);
     setCatalog((await fetch("/api/catalog").then((x) => x.json())) as CatalogChannel[]);
     return body.results;
+  }
+
+  const addToCatalog = (text: string) => postAdd("/api/catalog", text);
+  const addToList = (listId: string, text: string) => postAdd(`/api/lists/${listId}/channels`, text);
+
+  /** Saca un canal de una lista (sigue suscrito: queda "sin lista"). */
+  function removeFromList(listId: string, channelId: string) {
+    void saveLists(lists.map((l) => (l.id === listId ? { ...l, channelIds: l.channelIds.filter((c) => c !== channelId) } : l)));
   }
 
   async function removeFromCatalog(channelId: string) {
@@ -308,35 +320,56 @@ export function App() {
         ) : (
           <>
             {playing && <Player video={playing} onStarted={markWatched} onClose={() => setPlaying(null)} />}
-            <header className="page-header with-action">
-              <div>
-                <h2>{currentList.name}</h2>
-                <p>
-                  Vídeos recientes de {currentList.channelIds.length} {currentList.channelIds.length === 1 ? "canal" : "canales"}
-                </p>
-              </div>
-              <button className="btn" onClick={() => setRefreshKey((k) => k + 1)}>
-                ↻ Actualizar
+            <div className="segmented list-tabs" role="group" aria-label="Qué mostrar de la lista">
+              <button className={listTab === "videos" ? "active" : ""} onClick={() => setListTab("videos")}>
+                Vídeos
               </button>
-            </header>
-            <Feed
-              listId={currentList.id}
-              playingId={playing?.videoId}
-              watched={watched}
-              summarized={summarized}
-              selected={selected}
-              onPlay={setPlaying}
-              onToggleSelect={toggleSelect}
-              onOpenSummary={openSummary}
-              onUnwatch={unmarkWatched}
-              refreshKey={refreshKey}
-              channelTitles={channelTitles}
-            />
+              <button className={listTab === "channels" ? "active" : ""} onClick={() => setListTab("channels")}>
+                Canales <span className="count">{currentList.channelIds.length}</span>
+              </button>
+            </div>
+            {listTab === "videos" ? (
+              <>
+                <header className="page-header with-action">
+                  <div>
+                    <h2>{currentList.name}</h2>
+                    <p>
+                      Vídeos recientes de {currentList.channelIds.length} {currentList.channelIds.length === 1 ? "canal" : "canales"}
+                    </p>
+                  </div>
+                  <button className="btn" onClick={() => setRefreshKey((k) => k + 1)}>
+                    ↻ Actualizar
+                  </button>
+                </header>
+                <Feed
+                  listId={currentList.id}
+                  playingId={playing?.videoId}
+                  watched={watched}
+                  summarized={summarized}
+                  selected={selected}
+                  onPlay={setPlaying}
+                  onToggleSelect={toggleSelect}
+                  onOpenSummary={openSummary}
+                  onUnwatch={unmarkWatched}
+                  refreshKey={refreshKey}
+                  channelTitles={channelTitles}
+                />
+              </>
+            ) : (
+              <ListChannels
+                list={currentList}
+                subs={subs}
+                pending={catalog.filter((c) => c.listId === currentList.id)}
+                onAdd={(text) => addToList(currentList.id, text)}
+                onRemoveFromList={(channelId) => removeFromList(currentList.id, channelId)}
+                onRemoveFromCatalog={removeFromCatalog}
+              />
+            )}
           </>
         )}
       </main>
 
-      {selected.size > 0 && !panel && view !== HISTORY && (
+      {selected.size > 0 && !panel && view !== HISTORY && listTab === "videos" && (
         <div className="selection-bar">
           <span>{selected.size} {selected.size === 1 ? "vídeo seleccionado" : "vídeos seleccionados"}</span>
           <button className="btn" onClick={() => setSelected(new Map())}>Limpiar</button>

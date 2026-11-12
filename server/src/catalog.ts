@@ -13,12 +13,14 @@ export interface CatalogChannel {
   listName: string | null;
   /** Foto del canal (null si aún no se conoce). */
   thumbnail: string | null;
+  /** Id de la lista a la que volverá o se unirá al suscribirte (null si no tiene). */
+  listId: string | null;
 }
 
 export function listCatalog(): CatalogChannel[] {
   const rows = db
     .prepare(
-      `SELECT c.channel_id, c.title, c.handle, c.added_at, c.source, c.thumbnail, l.name AS list_name
+      `SELECT c.channel_id, c.title, c.handle, c.added_at, c.source, c.thumbnail, l.id AS list_id, l.name AS list_name
        FROM catalog_channels c LEFT JOIN lists l ON l.id = c.list_id
        ORDER BY c.title COLLATE NOCASE`,
     )
@@ -29,6 +31,7 @@ export function listCatalog(): CatalogChannel[] {
     added_at: number;
     source: string;
     thumbnail: string | null;
+    list_id: string | null;
     list_name: string | null;
   }[];
   return rows.map((r) => ({
@@ -39,6 +42,7 @@ export function listCatalog(): CatalogChannel[] {
     source: r.source === "baja" ? "baja" : "import",
     listName: r.list_name,
     thumbnail: r.thumbnail,
+    listId: r.list_id,
   }));
 }
 
@@ -132,12 +136,27 @@ export async function resolveChannel(client: OAuth2Client, query: ChannelQuery):
   };
 }
 
-export type AddStatus = "added" | "in_catalog" | "subscribed" | "not_found" | "unsupported" | "error";
+export type AddStatus =
+  // alta en el catálogo
+  | "added"
+  | "in_catalog"
+  | "subscribed"
+  // alta en una lista
+  | "added_to_list"
+  | "in_list"
+  | "in_other_list"
+  | "pending"
+  // comunes
+  | "not_found"
+  | "unsupported"
+  | "error";
 
 export interface AddResult {
   input: string;
   status: AddStatus;
   channel?: ResolvedChannel;
+  /** En "in_other_list": nombre de la lista en la que ya está. */
+  listName?: string;
 }
 
 const MAX_INPUTS = 50;
@@ -147,16 +166,17 @@ export function splitInputs(text: string): string[] {
   return text.split(/[\s,;]+/).filter(Boolean).slice(0, MAX_INPUTS);
 }
 
-/** Añade al catálogo los canales indicados por URL o @handle. Cada elemento se resuelve por separado. */
-export async function addToCatalog(client: OAuth2Client, text: string): Promise<AddResult[]> {
+/**
+ * Interpreta lo pegado y resuelve cada canal con la API. Los fallos de interpretación o de consulta se devuelven
+ * ya como resultado; para los canales que existen se llama a `apply`, que decide qué hacer con ellos.
+ */
+async function resolveAll(
+  client: OAuth2Client,
+  text: string,
+  apply: (input: string, channel: ResolvedChannel) => Omit<AddResult, "input" | "channel">,
+): Promise<AddResult[]> {
   const results: AddResult[] = [];
   const seen = new Set<string>();
-  const isSubscribed = db.prepare("SELECT 1 FROM subscription_snapshot WHERE channel_id = ? AND missing_since IS NULL");
-  const inCatalog = db.prepare("SELECT 1 FROM catalog_channels WHERE channel_id = ?");
-  const insert = db.prepare(
-    "INSERT OR IGNORE INTO catalog_channels (channel_id, title, handle, added_at, source, list_id, thumbnail) VALUES (?, ?, ?, ?, 'import', NULL, ?)",
-  );
-  const fillThumbnail = db.prepare("UPDATE catalog_channels SET thumbnail = COALESCE(thumbnail, ?) WHERE channel_id = ?");
 
   for (const input of splitInputs(text)) {
     const query = parseChannelInput(input);
@@ -179,16 +199,61 @@ export async function addToCatalog(client: OAuth2Client, text: string): Promise<
     }
     if (seen.has(channel.channelId)) continue; // el mismo canal pegado dos veces
     seen.add(channel.channelId);
-
-    if (isSubscribed.get(channel.channelId)) results.push({ input, status: "subscribed", channel });
-    else if (inCatalog.get(channel.channelId)) {
-      fillThumbnail.run(channel.thumbnail, channel.channelId); // vuelve a pasar: aprovecha para completar la foto
-      results.push({ input, status: "in_catalog", channel });
-    }
-    else {
-      insert.run(channel.channelId, channel.title, channel.handle, Date.now(), channel.thumbnail);
-      results.push({ input, status: "added", channel });
-    }
+    results.push({ input, channel, ...apply(input, channel) });
   }
   return results;
+}
+
+/** Añade al catálogo los canales indicados por URL o @handle. Cada elemento se resuelve por separado. */
+export function addToCatalog(client: OAuth2Client, text: string): Promise<AddResult[]> {
+  const isSubscribed = db.prepare("SELECT 1 FROM subscription_snapshot WHERE channel_id = ? AND missing_since IS NULL");
+  const inCatalog = db.prepare("SELECT 1 FROM catalog_channels WHERE channel_id = ?");
+  const insert = db.prepare(
+    "INSERT OR IGNORE INTO catalog_channels (channel_id, title, handle, added_at, source, list_id, thumbnail) VALUES (?, ?, ?, ?, 'import', NULL, ?)",
+  );
+  const fillThumbnail = db.prepare("UPDATE catalog_channels SET thumbnail = COALESCE(thumbnail, ?) WHERE channel_id = ?");
+
+  return resolveAll(client, text, (_input, channel) => {
+    if (isSubscribed.get(channel.channelId)) return { status: "subscribed" };
+    if (inCatalog.get(channel.channelId)) {
+      fillThumbnail.run(channel.thumbnail, channel.channelId); // vuelve a pasar: aprovecha para completar la foto
+      return { status: "in_catalog" };
+    }
+    insert.run(channel.channelId, channel.title, channel.handle, Date.now(), channel.thumbnail);
+    return { status: "added" };
+  });
+}
+
+/**
+ * Añade a una lista los canales indicados por URL o @handle.
+ * Una lista solo contiene canales a los que sigues: si ya estás suscrito, entra en la lista; si no, queda en el
+ * catálogo con esta lista como destino y se unirá a ella (con un aviso) cuando te suscribas.
+ */
+export function addToList(client: OAuth2Client, listId: string, text: string): Promise<AddResult[]> {
+  const isSubscribed = db.prepare("SELECT 1 FROM subscription_snapshot WHERE channel_id = ? AND missing_since IS NULL");
+  const currentList = db.prepare(
+    "SELECT c.list_id AS list_id, l.name AS list_name FROM list_channels c JOIN lists l ON l.id = c.list_id WHERE c.channel_id = ?",
+  );
+  const nextPosition = db.prepare("SELECT COALESCE(MAX(position), -1) + 1 AS p FROM list_channels WHERE list_id = ?");
+  const addToListStmt = db.prepare("INSERT INTO list_channels (channel_id, list_id, position) VALUES (?, ?, ?)");
+  const inCatalog = db.prepare("SELECT 1 FROM catalog_channels WHERE channel_id = ?");
+  const setCatalogList = db.prepare("UPDATE catalog_channels SET list_id = ?, thumbnail = COALESCE(thumbnail, ?) WHERE channel_id = ?");
+  const insertCatalog = db.prepare(
+    "INSERT INTO catalog_channels (channel_id, title, handle, added_at, source, list_id, thumbnail) VALUES (?, ?, ?, ?, 'import', ?, ?)",
+  );
+
+  return resolveAll(client, text, (_input, channel) => {
+    const current = currentList.get(channel.channelId) as unknown as { list_id: string; list_name: string } | undefined;
+    if (current) {
+      return current.list_id === listId ? { status: "in_list" } : { status: "in_other_list", listName: current.list_name };
+    }
+    if (isSubscribed.get(channel.channelId)) {
+      const { p } = nextPosition.get(listId) as unknown as { p: number };
+      addToListStmt.run(channel.channelId, listId, p);
+      return { status: "added_to_list" };
+    }
+    if (inCatalog.get(channel.channelId)) setCatalogList.run(listId, channel.thumbnail, channel.channelId);
+    else insertCatalog.run(channel.channelId, channel.title, channel.handle, Date.now(), listId, channel.thumbnail);
+    return { status: "pending" };
+  });
 }

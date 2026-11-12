@@ -1,7 +1,8 @@
 import express from "express";
 import { authUrl, authedClient, clearTokens, createClient, handleCallback, isAuthExpired } from "./auth.js";
 import { fetchFeed } from "./feed.js";
-import { addToCatalog, isChannelId, listCatalog, removeFromCatalog } from "./catalog.js";
+import { addToCatalog, addToList, isChannelId, listCatalog, removeFromCatalog, type AddResult } from "./catalog.js";
+import type { OAuth2Client } from "google-auth-library";
 import { loadLists, parseLists, saveLists } from "./lists.js";
 import { reconcileSubscriptions, removeMissingNow } from "./snapshot.js";
 import { listSummaries, monthUsage, parseVideoRefs, SummaryError, summarizedMap, summarize } from "./summarize.js";
@@ -73,8 +74,12 @@ app.get("/api/catalog", (_req, res) => {
   res.json(listCatalog());
 });
 
-app.post("/api/catalog", express.json(), async (req, res) => {
-  const text = req.body?.text;
+/** Ejecuta un alta de canales por URL o @handle con la sesión de Google, y traduce los fallos a respuestas HTTP. */
+async function runAdd(
+  text: unknown,
+  res: express.Response,
+  run: (client: OAuth2Client, text: string) => Promise<AddResult[]>,
+): Promise<void> {
   if (typeof text !== "string" || !text.trim() || text.length > 5000) {
     res.status(400).json({ error: "Pega una o varias URLs o @handles de canales" });
     return;
@@ -85,7 +90,7 @@ app.post("/api/catalog", express.json(), async (req, res) => {
     return;
   }
   try {
-    res.json({ results: await addToCatalog(client, text) });
+    res.json({ results: await run(client, text) });
   } catch (err) {
     if (isAuthExpired(err)) {
       await clearTokens();
@@ -95,6 +100,17 @@ app.post("/api/catalog", express.json(), async (req, res) => {
     console.error(err);
     res.status(502).json({ error: "Error al consultar YouTube" });
   }
+}
+
+app.post("/api/catalog", express.json(), (req, res) => runAdd(req.body?.text, res, addToCatalog));
+
+app.post("/api/lists/:id/channels", express.json(), async (req, res) => {
+  const list = (await loadLists()).find((l) => l.id === req.params.id);
+  if (!list) {
+    res.status(404).json({ error: "Lista no encontrada" });
+    return;
+  }
+  await runAdd(req.body?.text, res, (client, text) => addToList(client, list.id, text));
 });
 
 app.delete("/api/catalog/:channelId", (req, res) => {

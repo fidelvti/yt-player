@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Catalog } from "./Catalog";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { Feed } from "./Feed";
 import { ListChannels } from "./ListChannels";
 import { History } from "./History";
@@ -58,6 +59,7 @@ export function App() {
   const [lists, setLists] = useState<ChannelList[]>([]);
   const [catalog, setCatalog] = useState<CatalogChannel[]>([]);
   const [listTab, setListTab] = useState<"videos" | "channels">("videos");
+  const [confirmingLogout, setConfirmingLogout] = useState(false);
   const [view, setView] = useState<string>(MANAGE);
   const [playing, setPlaying] = useState<FeedVideo | null>(null);
   const [watched, setWatched] = useState<Set<string>>(new Set());
@@ -289,7 +291,7 @@ export function App() {
         <button className={`item ${view === MANAGE ? "active" : ""}`} onClick={() => changeView(MANAGE)}>
           Gestionar listas
         </button>
-        <button className="item logout" onClick={logout}>
+        <button className="item logout" onClick={() => setConfirmingLogout(true)}>
           Cerrar sesión
         </button>
       </nav>
@@ -375,6 +377,19 @@ export function App() {
           <button className="btn" onClick={() => setSelected(new Map())}>Limpiar</button>
           <button className="btn primary" onClick={() => setPanel({ kind: "new", videos: [...selected.values()] })}>Resumir</button>
         </div>
+      )}
+
+      {confirmingLogout && (
+        <ConfirmDialog
+          title="¿Cerrar sesión?"
+          message="Se borrará el acceso guardado a tu cuenta de Google y tendrás que volver a iniciar sesión. Tus listas, vistos y resúmenes no se tocan."
+          confirmLabel="Cerrar sesión"
+          onConfirm={() => {
+            setConfirmingLogout(false);
+            void logout();
+          }}
+          onCancel={() => setConfirmingLogout(false)}
+        />
       )}
 
       {panel && (

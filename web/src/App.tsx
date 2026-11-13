@@ -68,6 +68,8 @@ export function App() {
   const [panel, setPanel] = useState<Panel | null>(null);
   const [sessionExpired, setSessionExpired] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [refreshingFeed, setRefreshingFeed] = useState(false);
+  const [refreshingAll, setRefreshingAll] = useState(false);
   const [subsNotice, setSubsNotice] = useState<{ text: string; canForce: boolean } | null>(null);
   const [refreshingSubs, setRefreshingSubs] = useState(false);
 
@@ -131,6 +133,22 @@ export function App() {
     // loadSubscriptions solo usa setters estables
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loggedIn]);
+
+  /**
+   * "Actualizar" en una lista: primero las suscripciones (una baja puede sacar un canal de la lista) y después los
+   * vídeos, para que el feed ya refleje el cambio. Si la sesión de Google ha caducado, se queda en el login.
+   */
+  async function refreshAll() {
+    setRefreshingAll(true);
+    try {
+      const saved = await loadSubscriptions();
+      if (saved !== null) setRefreshKey((k) => k + 1);
+    } catch {
+      setRefreshKey((k) => k + 1); // si falla la lectura de suscripciones, al menos se refrescan los vídeos
+    } finally {
+      setRefreshingAll(false);
+    }
+  }
 
   /** Confirma ya las bajas pendientes (catálogo y listas), sin esperar los 30 minutos. */
   async function removeNow() {
@@ -285,11 +303,11 @@ export function App() {
         <button className={`item ${view === CATALOG ? "active" : ""}`} onClick={() => changeView(CATALOG)}>
           Catálogo <span className="count">{catalog.length}</span>
         </button>
+        <button className={`item ${view === MANAGE ? "active" : ""}`} onClick={() => changeView(MANAGE)}>
+          Gestionar listas <span className="count">{subs.length}</span>
+        </button>
         <button className={`item ${view === HISTORY ? "active" : ""}`} onClick={() => changeView(HISTORY)}>
           Resúmenes <span className="count">{summaries.length}</span>
-        </button>
-        <button className={`item ${view === MANAGE ? "active" : ""}`} onClick={() => changeView(MANAGE)}>
-          Gestionar listas
         </button>
         <button className="item logout" onClick={() => setConfirmingLogout(true)}>
           Cerrar sesión
@@ -339,8 +357,8 @@ export function App() {
                       Vídeos recientes de {currentList.channelIds.length} {currentList.channelIds.length === 1 ? "canal" : "canales"}
                     </p>
                   </div>
-                  <button className="btn" onClick={() => setRefreshKey((k) => k + 1)}>
-                    ↻ Actualizar
+                  <button className="btn" disabled={refreshingAll || refreshingSubs || refreshingFeed} onClick={() => void refreshAll()}>
+                    {refreshingAll || refreshingSubs || refreshingFeed ? "Actualizando…" : "↻ Actualizar"}
                   </button>
                 </header>
                 <Feed
@@ -355,6 +373,7 @@ export function App() {
                   onUnwatch={unmarkWatched}
                   refreshKey={refreshKey}
                   channelTitles={channelTitles}
+                  onLoadingChange={setRefreshingFeed}
                 />
               </>
             ) : (
@@ -365,6 +384,8 @@ export function App() {
                 onAdd={(text) => addToList(currentList.id, text)}
                 onRemoveFromList={(channelId) => removeFromList(currentList.id, channelId)}
                 onRemoveFromCatalog={removeFromCatalog}
+                onRefresh={loadSubscriptions}
+                refreshing={refreshingSubs}
               />
             )}
           </>

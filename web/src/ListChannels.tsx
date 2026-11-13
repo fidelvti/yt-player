@@ -12,10 +12,13 @@ interface Props {
   onAdd: (text: string) => Promise<AddResult[]>;
   onRemoveFromList: (channelId: string) => void;
   onRemoveFromCatalog: (channelId: string) => void;
+  /** Vuelve a leer las suscripciones (altas, bajas y handles). */
+  onRefresh: () => void;
+  refreshing: boolean;
 }
 
 /** Los canales de una lista, con el mismo formato que el catálogo. */
-export function ListChannels({ list, subs, pending, onAdd, onRemoveFromList, onRemoveFromCatalog }: Props) {
+export function ListChannels({ list, subs, pending, onAdd, onRemoveFromList, onRemoveFromCatalog, onRefresh, refreshing }: Props) {
   const byId = new Map(subs.map((s) => [s.channelId, s]));
   const members = list.channelIds
     .map((id) => ({
@@ -29,7 +32,7 @@ export function ListChannels({ list, subs, pending, onAdd, onRemoveFromList, onR
 
   return (
     <div>
-      <header className="page-header">
+      <header className="page-header with-action">
         <div>
           <h2>Canales</h2>
           <p>
@@ -37,6 +40,9 @@ export function ListChannels({ list, subs, pending, onAdd, onRemoveFromList, onR
             lista; si no, queda pendiente en el Catálogo y se unirá a ella cuando te suscribas.
           </p>
         </div>
+        <button className="btn" disabled={refreshing} onClick={onRefresh}>
+          {refreshing ? "Actualizando…" : "↻ Actualizar suscripciones"}
+        </button>
       </header>
 
       <AddChannels

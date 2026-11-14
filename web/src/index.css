@@ -273,7 +273,14 @@ main { padding: 28px 32px 48px; min-width: 0; }
 
 .page-header.with-action { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .notice { color: var(--accent); font-weight: 600; }
-nav .item.logout { color: var(--muted); font-size: 14px; }
+/* Cerrar sesión: botón rojo para que destaque. El acento algo más oscuro da mejor contraste con el texto blanco. */
+nav .item.logout {
+  margin-top: 10px; justify-content: center;
+  background: color-mix(in srgb, var(--accent) 82%, black); color: #fff;
+  font-size: 14px; font-weight: 600;
+}
+nav .item.logout:hover { background: color-mix(in srgb, var(--accent) 92%, black); }
+nav .item.logout:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 .regenerate { display: flex; align-items: center; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
 
 .banner {

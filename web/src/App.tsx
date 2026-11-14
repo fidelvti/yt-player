@@ -300,11 +300,12 @@ export function App() {
           />
         ))}
         <div className="spacer" />
-        <button className={`item ${view === CATALOG ? "active" : ""}`} onClick={() => changeView(CATALOG)}>
-          Catálogo <span className="count">{catalog.length}</span>
-        </button>
+        <div className="nav-label">Acciones</div>
         <button className={`item ${view === MANAGE ? "active" : ""}`} onClick={() => changeView(MANAGE)}>
           Gestionar listas <span className="count">{subs.length}</span>
+        </button>
+        <button className={`item ${view === CATALOG ? "active" : ""}`} onClick={() => changeView(CATALOG)}>
+          Catálogo <span className="count">{catalog.length}</span>
         </button>
         <button className={`item ${view === HISTORY ? "active" : ""}`} onClick={() => changeView(HISTORY)}>
           Resúmenes <span className="count">{summaries.length}</span>

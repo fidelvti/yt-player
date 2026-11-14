@@ -1,6 +1,7 @@
 import { XMLParser } from "fast-xml-parser";
 import type { OAuth2Client } from "google-auth-library";
 import { authedClient } from "./auth.js";
+import { cachedDurations, fillDurations } from "./durations.js";
 import { fetchUploads, QuotaExceededError } from "./uploads.js";
 
 export interface FeedVideo {
@@ -10,6 +11,8 @@ export interface FeedVideo {
   channelTitle: string;
   published: string;
   thumbnail: string;
+  /** Duración en segundos (null si no se conoce, p. ej. un directo en curso). */
+  durationSeconds?: number | null;
 }
 
 const CACHE_MS = 5 * 60 * 1000;
@@ -136,6 +139,24 @@ async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promis
   return results;
 }
 
+/**
+ * Añade la duración a cada vídeo. Solo se consulta a YouTube por los vídeos que aún no la tienen guardada; si no hay
+ * sesión, o la consulta falla, se usan las ya guardadas y el resto queda sin duración (no es crítico).
+ */
+async function attachDurations(videos: FeedVideo[], client: OAuth2Client | null): Promise<void> {
+  const ids = videos.map((v) => v.videoId);
+  if (client && Date.now() >= apiPausedUntil) {
+    try {
+      await fillDurations(client, ids);
+    } catch (err) {
+      if (err instanceof QuotaExceededError) apiPausedUntil = Date.now() + API_PAUSE_MS;
+      console.warn("No se pudieron obtener las duraciones:", (err as Error).message);
+    }
+  }
+  const durations = cachedDurations(ids);
+  for (const v of videos) v.durationSeconds = durations.get(v.videoId) ?? null;
+}
+
 export async function fetchFeed(channelIds: string[], force = false): Promise<FeedResult> {
   const client = await authedClient();
   const results = await mapLimit(channelIds, CONCURRENCY, (id) => fetchChannelFeed(id, force, client));
@@ -150,5 +171,6 @@ export async function fetchFeed(channelIds: string[], force = false): Promise<Fe
     }
   }
   videos.sort((a, b) => b.published.localeCompare(a.published));
+  await attachDurations(videos, client);
   return { videos, failed, stale };
 }

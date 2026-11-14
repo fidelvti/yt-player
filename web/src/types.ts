@@ -87,6 +87,8 @@ export interface FeedVideo {
   channelTitle: string;
   published: string;
   thumbnail: string;
+  /** Duración en segundos (null o ausente si no se conoce, p. ej. un directo en curso). */
+  durationSeconds?: number | null;
 }
 
 export interface SummaryResult {

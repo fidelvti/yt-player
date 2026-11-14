@@ -3,6 +3,15 @@ import type { FeedResponse, FeedVideo } from "./types";
 
 const rtf = new Intl.RelativeTimeFormat("es", { numeric: "auto" });
 
+/** 110 -> "1:50"; 3723 -> "1:02:03". */
+export function formatDuration(totalSeconds: number): string {
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  const ss = String(s).padStart(2, "0");
+  return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${ss}` : `${m}:${ss}`;
+}
+
 function timeAgo(iso: string): string {
   const hours = (new Date(iso).getTime() - Date.now()) / 3_600_000;
   if (Math.abs(hours) < 24) return rtf.format(Math.round(hours), "hour");
@@ -100,6 +109,11 @@ export function Feed({
               >
                 <div className="thumb">
                   <img src={v.thumbnail} alt="" loading="lazy" />
+                  {v.durationSeconds ? (
+                    <span className="duration-badge" title="Duración">
+                      {formatDuration(v.durationSeconds)}
+                    </span>
+                  ) : null}
                   <div className="badges">
                     {v.videoId === playingId && <span className="badge playing-badge">Reproduciendo</span>}
                   </div>

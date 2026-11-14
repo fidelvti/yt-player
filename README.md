@@ -8,7 +8,7 @@ Reproductor de YouTube personal, sencillo y a medida. Sin buscador, sin likes ni
 - **Listas de canales propias**: agrupa tus suscripciones (p. ej. 70 canales en 7 listas). Un canal solo puede estar en una lista. Las listas se renombran y borran con los iconos de la barra lateral; borrar una lista no pierde sus canales, solo vuelven a quedar *sin lista*.
 - **Gestionar listas** con filtro de canales sin lista y barra de progreso. Si te das de baja de un canal en YouTube, se quita de tus listas y pasa al *Catálogo* (ver *Bajas de suscripción*).
 - **Catálogo**: canales que conoces pero a los que no estás suscrito (los que dejas de seguir y los que añadas tú pegando una URL o un `@handle`; admite varios a la vez). Cada uno tiene un enlace para abrirlo en YouTube y suscribirte a mano; la app nunca se suscribe ni se da de baja por ti. Al suscribirte, desaparece del catálogo en la siguiente actualización y, si venía de una lista, **vuelve a ella**.
-- **Feed por lista** con los vídeos recientes de sus canales (vídeos y directos, sin shorts). *Actualizar* vuelve a leer primero tus suscripciones (altas, bajas) y después los vídeos.
+- **Feed por lista** con los vídeos recientes de sus canales (vídeos y directos, sin shorts), con su **duración** en la esquina de la miniatura. *Actualizar* vuelve a leer primero tus suscripciones (altas, bajas) y después los vídeos.
 - **Vídeos / Canales en cada lista**: un selector alterna entre el feed y la lista de canales de esa lista (foto, nombre y enlace a YouTube, con el mismo formato que el Catálogo). Desde *Canales* se pueden añadir canales a la lista pegando una URL o un `@handle`: si ya estás suscrito entran en ella; si no, quedan pendientes en el Catálogo y se unen a la lista cuando te suscribas. También se pueden sacar de la lista (siguen suscritos, quedan *sin lista*).
 - **Reproductor** integrado con velocidad ajustable (1x a 2x, la última se recuerda). Con Premium en el navegador no muestra anuncios.
 - **Vídeos vistos**: se marcan al empezar a reproducirse, se atenúan en el feed y caducan a los 7 días. Pulsando la etiqueta *✓ Visto* se quita la marca.
@@ -73,6 +73,7 @@ server/src/
   snapshot.ts    histórico de suscripciones, detección de bajas y paso al catálogo
   catalog.ts     catálogo de canales no suscritos
   handles.ts     completa el @handle de los canales (en lotes de 50, solo los que faltan)
+  durations.ts   duración de los vídeos del feed (en lotes de 50; se guarda una sola vez por vídeo)
   watched.ts     vídeos vistos (caducan a los 7 días)
   transcripts.ts transcripciones con yt-dlp, con caché
   summarize.ts   resumen con Claude, historial y gasto

@@ -67,6 +67,13 @@ db.exec(`
     thumbnail  TEXT   -- foto del canal
   );
 
+  -- Duración de los vídeos del feed (no cambia: se pide una sola vez por vídeo; se olvida a los 60 días).
+  CREATE TABLE IF NOT EXISTS video_durations (
+    video_id   TEXT PRIMARY KEY,
+    seconds    INTEGER NOT NULL,
+    fetched_at INTEGER NOT NULL
+  );
+
   -- Caché de transcripciones (se descargan una sola vez por vídeo).
   CREATE TABLE IF NOT EXISTS transcripts (
     video_id   TEXT PRIMARY KEY,

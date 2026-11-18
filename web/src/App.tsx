@@ -201,6 +201,8 @@ export function App() {
     });
   }
 
+  const listedIds = new Set(lists.flatMap((l) => l.channelIds));
+  const unlistedCount = subs.filter((s) => !listedIds.has(s.channelId)).length;
   const currentList = lists.find((l) => l.id === view);
   const channelTitles = new Map(subs.map((s) => [s.channelId, s.title]));
 
@@ -302,7 +304,10 @@ export function App() {
         <div className="spacer" />
         <div className="nav-label">Acciones</div>
         <button className={`item ${view === MANAGE ? "active" : ""}`} onClick={() => changeView(MANAGE)}>
-          Gestionar listas <span className="count">{subs.length}</span>
+          Gestionar listas{" "}
+          <span className="count" title="Sin lista / total de suscripciones">
+            {unlistedCount} / {subs.length}
+          </span>
         </button>
         <button className={`item ${view === CATALOG ? "active" : ""}`} onClick={() => changeView(CATALOG)}>
           Catálogo <span className="count">{catalog.length}</span>
